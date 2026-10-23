@@ -17,7 +17,8 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
-- xxx
+- Correction du débordement de pile lors de la génération du graphe contenant
+  des dépendances cycliques (#1) : parcours itératif et tests de non-régression.
 
 ## [1.0.0] - aaaa-mm-jj
 

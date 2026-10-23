@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
+    "test": "node --require ts-node/register --test tests/*.test.ts",
     "build": "echo 'useless pipeline step'",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
