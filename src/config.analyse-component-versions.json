@@ -1,0 +1,63 @@
+{
+    "repos": [
+        {
+            "name": "repo-react",
+            "url": "git@github.enterprise.io:commons/repo-react.git"
+        },
+        {
+            "name": "repo-react-enterprise",
+            "url": "git@github.enterprise.io:commons/repo-react-enterprise.git"
+        },
+        {
+            "name": "enterprise-assets",
+            "url": "git@github.enterprise.io:commons/enterprise-assets.git"
+        }
+    ],
+    "githubBaseUrl": "https://github.enterprise.io/commons",
+    "tmpDir": ".tmp",
+    "analysisDir": "./analyses",
+    "reportsDir": "./reports",
+    "shaIndexPath": "./analyses/sha_index.json",
+    "gitDiffCachePath": "./analyses/git_diff_cache.json",
+    "srcDir": "src",
+    "includeExportAll": false,
+    "excludeDefaultNameEverywhere": true,
+    "excludeDirNames": [
+        "node_modules",
+        "dist",
+        "build",
+        ".git"
+    ],
+    "excludeFilePatterns": [
+        "test",
+        "spec",
+        "mock",
+        "stub",
+        "e2e",
+        "style",
+        ".md",
+        ".markdown"
+    ],
+    "validCodeExtensions": [
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx"
+    ],
+    "validAssetExtensions": [
+        ".svg",
+        ".component.svg"
+    ],
+    "ignorePrereleaseTags": [
+        "-SNAPSHOT",
+        "-rc.",
+        "-hc."
+    ],
+    "tagMin": null,
+    "tagMax": null,
+    "parallel": 4,
+    "debug": false,
+    "markdownShowFullPathLabels": true,
+    "markdownCompactTables": true,
+    "markdownDropEmptyColumns": true
+}

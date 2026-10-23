@@ -1,0 +1,55 @@
+{
+  "name": "repo-tools",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "echo 'useless pipeline step'",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
+    "generate-component-dependency-graph": "ts-node src/generate-component-dependency-graph.ts",
+    "analyse-component-versions": "node src/analyse-component-versions.js",
+    "scan-ghe": "node src/scan-ghe.js",
+    "graph:analyze": "ts-node src/commands/analyze-graph.ts",
+    "graph:required": "ts-node src/commands/required-components.ts",
+    "graph:required-by-name": "ts-node src/commands/required-components-by-name.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.enterprise.io:bertrand-delion/repo-tools.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^9.23.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/graphlib": "^2.1.12",
+    "@types/madge": "^5.0.3",
+    "@types/node": "^22.13.14",
+    "@types/semver": "^7.7.0",
+    "commander": "^13.1.0",
+    "eslint": "^9.23.0",
+    "globals": "^16.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.29.0"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.28.4",
+    "@octokit/rest": "^22.0.0",
+    "@yarnpkg/lockfile": "^1.1.0",
+    "ast-types": "^0.14.2",
+    "d3": "^7.9.0",
+    "dagre": "^0.8.5",
+    "dagre-d3": "^0.6.4",
+    "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
+    "fast-xml-parser": "^5.3.0",
+    "fs-extra": "^11.3.2",
+    "graphlib": "^2.1.8",
+    "madge": "^8.0.0",
+    "semver": "^7.7.3",
+    "simple-git": "^3.28.0",
+    "yaml": "^2.8.1"
+  }
+}
