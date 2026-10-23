@@ -17,6 +17,10 @@ npm run graph:analyze -- graphe/repo-react-component-dependency-graph.tgf
 
 Puis choisir un des trois modes :
 
+Conserver le séparateur `--` immédiatement après `graph:required-by-name` :
+il indique à npm de transmettre les arguments suivants au script. Sans ce
+séparateur, `--all` est consommé par npm et n’apparaît pas dans `process.argv`.
+
 ```bash
 # Liste explicite (comportement existant)
 npm run graph:required-by-name -- graphe/repo-react-component-dependency-graph.tgf ComboBox Dialog

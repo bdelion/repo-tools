@@ -95,6 +95,9 @@ npm run graph:required-by-name -- \
 
 Pour traiter tous les composants du graphe :
 
+Le séparateur `--` après `graph:required-by-name` est nécessaire : sans lui,
+npm consomme l’option `--all` au lieu de la transmettre au script.
+
 ```bash
 npm run graph:required-by-name -- graphe/repo-react-component-dependency-graph.tgf --all
 ```

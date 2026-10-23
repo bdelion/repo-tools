@@ -10,7 +10,10 @@ import { selectComponentNames } from './componentSelection';
 
 const graphFile = process.argv[2];
 const selectionArgs = process.argv.slice(3);
-const usage = 'Usage: graph:required-by-name <graph.tgf> <Component1 Component2... | --all | --components-file chemin.txt>';
+const usage = [
+    'Usage: npm run graph:required-by-name -- <graph.tgf> <Component1 Component2... | --all | --components-file chemin.txt>',
+    'Le séparateur -- après le nom du script est nécessaire pour transmettre les options au script.',
+].join('\n');
 
 if (graphFile === '--help') {
     console.log(usage);
