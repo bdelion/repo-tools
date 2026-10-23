@@ -7,7 +7,8 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 ## [Unreleased]
 ### Added
 
-- xxx
+- Sélection de tous les composants avec `graph:required-by-name --all` ou d’une
+  liste texte UTF-8 avec `--components-file <chemin>`.
 - xxx
 - xxx
 

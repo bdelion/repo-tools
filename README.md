@@ -93,13 +93,33 @@ npm run graph:required-by-name -- \
   Dialog
 ```
 
+Pour traiter tous les composants du graphe :
+
+```bash
+npm run graph:required-by-name -- graphe/repo-react-component-dependency-graph.tgf --all
+```
+
+Pour charger une liste depuis un fichier texte UTF-8 (un nom par ligne,
+lignes vides et commentaires commençant par `#` ignorés) :
+
+```bash
+npm run graph:required-by-name -- graphe/repo-react-component-dependency-graph.tgf --components-file config/components.txt
+```
+
+Ces trois modes sont exclusifs. Les doublons sont supprimés et les noms inconnus
+figurent dans la section « Missing Components » du rapport. Voir [le format du fichier](docs/required-components.md).
+Exécuter d’abord `npm run graph:analyze -- <graphe.tgf>` pour générer les métadonnées
+associées dans `reports/<OUTPUT_GRAPHE_DIR>/components.json` (`OUTPUT_GRAPHE_DIR`
+est défini dans `src/config.ts`).
+
 Generated files:
 
 ```text
 reports/
-└── required-components/
-    ├── required-components.json
-    └── required-components.md
+└── <OUTPUT_GRAPHE_DIR>/
+    └── required-components/
+        ├── required-components.json
+        └── required-components.md
 ```
 
 #### Available metrics
