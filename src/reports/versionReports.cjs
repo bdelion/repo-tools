@@ -67,9 +67,14 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
       }
     }
     if (index < 0) return { file: '', url: '' };
+    return referenceFileLink(repoName, ctx, index, at(index));
+  }
+
+  function referenceFileLink(repoName, ctx, index, filePath) {
+    const file = normalizePath(filePath);
+    if (!file || !ctx.trees[index].has(file)) return { file, url: '' };
     const reference = ctx.snapshots[index].reference;
     const ref = reference.branch ?? (reference.kind === 'develop' ? 'develop' : reference.label);
-    const file = at(index);
     const encodedPath = file.split('/').map(encodeURIComponent).join('/');
     return { file, url: `${CFG.githubBaseUrl}/${repoName}/blob/${encodeURIComponent(ref)}/${encodedPath}` };
   }
@@ -118,17 +123,18 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
     return result;
   }
 
-  function pairTable(repoName, ctx, entries) {
+  function pairTable(repoName, ctx, entries, targetIndex) {
     if (!entries.length) return '_Aucun_';
     const rows = [['Nom', 'Previous Name', 'Visible Name', 'Reasons', 'History Match', 'Previous Export File', 'Previous Source File', 'Export File', 'Source File']];
-    for (const { lineage, component } of entries) {
-      const exported = fileLink(repoName, ctx, lineage, 'file');
-      const source = fileLink(repoName, ctx, lineage, 'sourcefile');
+    for (const { component } of entries) {
+      const exported = referenceFileLink(repoName, ctx, targetIndex, component.file);
+      const source = referenceFileLink(repoName, ctx, targetIndex, component.sourcefile);
+      const renderLink = entry => mdLink(path.posix.basename(entry.file), entry.url) || path.posix.basename(entry.file);
       rows.push([component.name, component.previous?.name !== component.name ? component.previous?.name ?? '' : '',
         component.visibleName ?? '', (component.changeReasons ?? []).join(', '), component.historyMatch ?? '',
         component.changeReasons?.includes('exportMoved') ? normalizePath(component.previous.file) : '',
         component.changeReasons?.includes('sourceMoved') ? normalizePath(component.previous.sourcefile) : '',
-        mdLink(path.posix.basename(exported.file), exported.url), mdLink(path.posix.basename(source.file), source.url)]);
+        renderLink(exported), renderLink(source)]);
     }
     return markdownTable(rows);
   }
@@ -148,7 +154,7 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
     collectJson(outputs, path.join(CFG.analysisDir, comparisonFileName(repoName, json.from, json.to, 'json')), json);
     const sections = [['added', 'Nouveaux composants'], ['removed', 'Composants supprimés'], ['changed', 'Composants modifiés'], ['unchanged', 'Composants inchangés']];
     const markdown = [`# Rapport de comparaison des composants`, `**Repository** : ${repoName}`, `**De** : ${json.from}`, `**À** : ${json.to}`, '',
-      ...sections.flatMap(([key, title]) => [`## ${title}`, '', pairTable(repoName, ctx, groups[key]), ''])].join('\n');
+      ...sections.flatMap(([key, title]) => [`## ${title}`, '', pairTable(repoName, ctx, groups[key], index), ''])].join('\n');
     const target = path.join(CFG.analysisDir, comparisonFileName(repoName, json.from, json.to, 'md'));
     outputs.set(path.resolve(target), formatMarkdown(markdown));
     logDebug(`Rapport préparé : ${target}`);

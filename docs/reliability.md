@@ -47,10 +47,13 @@ renommage Git. Les variantes ambiguës (`Button.ts` et `Button.tsx`), les symbol
 différents et les déplacements vers un autre répertoire ne sont pas rapprochés
 par cette seule règle. `typescriptMigration` apparaît dans les motifs de modification ;
 les différences de contenu restent signalées et les exports directs/alias restent distincts.
-Les liens utilisent la référence nommée de plus haute version analysée si le fichier
+Les liens des rapports globaux utilisent la référence nommée de plus haute version analysée si le fichier
 y existe encore, sinon le dernier tag analysé où il existe (ou, sans tag, la dernière
 candidate connue). Cette vérification utilise les arbres Git et s’applique séparément
 au fichier d’export et à sa source. Le tri porte sur le nom affiché, en ordre naturel.
+Dans les rapports de comparaison entre deux versions, tous les liens pointent vers
+la référence cible (`tag2`), avec les chemins de la comparaison. Un fichier absent
+de la cible reste affiché sans lien, notamment pour les composants supprimés.
 `includeExportAll` active l’expansion de `export *`, sans exporter `default`.
 Les SVG déclarés dans `validAssetExtensions` restent inventoriés dans l’analyse
 des versions lorsqu’ils sont réexportés par chemin relatif ; leur contenu est

@@ -188,7 +188,9 @@ test('rapports : tri naturel visible, historique unique, liens nommés et repli 
     assert.match(markdown, /blob\/develop\/z\/source%20with%20space.svg/);
     assert.doesNotMatch(markdown, /blob\/sha[123]\//);
     const pair = [...outputs.entries()].find(([file]) => file.endsWith('.md') && !file.includes('component_comparison'))![1].toString();
-    assert.match(pair, /blob\/develop\//);
+    assert.match(pair, /blob\/1.1.0\/new\/index.js/);
+    assert.match(pair, /blob\/1.1.0\/new\/icon.svg/);
+    assert.doesNotMatch(pair, /blob\/(develop|1.0.0|sha[123])\//);
     assert.match(pair, /gitSourceRename/);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(outputs.get(path.resolve('reports/fixture_component_comparison.xlsx')));
@@ -200,6 +202,45 @@ test('rapports : tri naturel visible, historique unique, liens nommés et repli 
     assert.equal(sheet.getCell('A5').value, 'NewIcon');
     assert.match(sheet.getCell('E5').value.hyperlink, /blob\/develop\/new\/index.js/);
     assert.match(sheet.getCell('F5').value.hyperlink, /blob\/1.1.0\/new\/icon.svg/);
+});
+
+test('comparaison pair-à-pair : liens exclusivement vers la cible, chemins historiques et fichiers supprimés (#10)', async () => {
+    for (const target of [
+        { kind: 'tag', label: '2.0.0', sha: 'target' },
+        { kind: 'release', label: '2.0.0 (release candidate)', branch: 'release/2.0.0', sha: 'target' },
+    ]) {
+        const removed = component('Removed', 'removed.js', 'removed.js', 'removed');
+        const unexported = component('Unexported', 'retained.js', 'retained.js', 'retained');
+        const before = component('Moved', 'before.js', 'before.js', 'moved');
+        const middle = component('Moved', 'middle.js', 'middle.js', 'moved');
+        const later = component('Moved', 'future.js', 'future.js', 'moved');
+        const added = component('Added', 'added.js', 'added.js', 'added');
+        const unchanged = component('Unchanged', 'unchanged.js', 'unchanged.js', 'unchanged');
+        const snapshots = [
+            { reference: { kind: 'tag', label: '1.0.0', sha: 'old' }, result: { components: [removed, unexported, before, unchanged] } },
+            { reference: target, result: { components: [middle, added, unchanged] } },
+            { reference: { kind: 'develop', label: '3.0.0 (develop)', branch: 'develop', sha: 'future' }, result: { components: [later, added, unchanged] } },
+        ];
+        const outputs = new Map<string, string | Buffer>();
+        const reports = createVersionReports({
+            config: { tmpDir: '.', analysisDir: 'analyses', reportsDir: 'reports', githubBaseUrl: 'https://example.org' },
+            logDebug: () => {}, hasGitDiff: async () => false,
+            collectJson: (map: typeof outputs, file: string, value: unknown) => map.set(path.resolve(file), JSON.stringify(value)),
+            createHistoryReader: () => ({ files: async (sha: string) => new Set(snapshots.find(snapshot => snapshot.reference.sha === sha)!.result.components
+                .map(item => item.file).concat(sha === 'target' ? ['retained.js'] : [])),
+            renames: async (sha: string) => new Map(sha === 'old' ? [['before.js', 'middle.js']] : [['middle.js', 'future.js']]) }),
+        });
+        await reports.generateReports('fixture', snapshots[0], snapshots[1], outputs, snapshots);
+        const markdown = [...outputs.entries()].find(([file]) => file.endsWith('.md'))![1].toString();
+        const reference = encodeURIComponent(target.branch ?? target.label);
+        const links = [...markdown.matchAll(/\]\(([^)]+)\)/g)].map(match => match[1]);
+        assert.equal(links.length, 8); // Added, Moved, Unchanged et Unexported : export + source.
+        assert.ok(links.every(link => link.includes(`/blob/${reference}/`)));
+        assert.ok(links.some(link => link.endsWith('/middle.js')));
+        assert.ok(links.some(link => link.endsWith('/retained.js')));
+        assert.ok(links.every(link => !/\/(before|future|removed)\.js$/.test(link)));
+        assert.match(markdown, /\|Removed\|[^\n]*\|removed.js\|removed.js\|/);
+    }
 });
 
 test('Git réel : source R100, ancien barrel supprimé, nouveau barrel ajouté et liens Markdown/Excel', async () => {

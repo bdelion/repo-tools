@@ -107,12 +107,16 @@ avec un message d’ambiguïté listant les branches. Aucun choix arbitraire n�
 
 Les analyses JSON contiennent `version`, `kind`, `branch` et `sha`. Les comparaisons
 utilisent les SHA afin qu’un nouveau commit sur une branche ne réutilise pas un ancien diff.
-Les liens Markdown et Excel utilisent une référence nommée : la référence de plus
+Les liens des rapports globaux Markdown et Excel utilisent une référence nommée : la référence de plus
 haute version analysée si le fichier y existe encore, sinon le dernier tag analysé
 où il existe. Sans tag correspondant, la dernière branche candidate connue sert
 de repli. L’existence des fichiers est vérifiée dans les arbres Git ; le fichier
 d’export et le fichier source sont traités indépendamment. Une branche pouvant
 évoluer après la génération, ses liens reflètent son état au moment de leur ouverture.
+Dans les rapports pair-à-pair `[repo]_[tag1]_to_[tag2]_rapport.md`, tous les liens
+utilisent la référence cible `tag2` et les chemins de cette comparaison, même si
+des versions ultérieures sont analysées. Un fichier absent de `tag2` est affiché
+sans lien plutôt qu’avec un lien cassé ou vers une autre version.
 
 Les lignes sont triées naturellement sur le nom de composant affiché (`Component2`
 avant `Component10`), avec l’identité comme critère secondaire déterministe.

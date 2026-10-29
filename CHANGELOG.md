@@ -27,6 +27,8 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
+- Liens des rapports de comparaison entre deux versions vers la référence cible
+  (`tag2`) et ses chemins, sans lien lorsque le fichier n’y existe plus (#10).
 - Historique conservé lors des migrations `.js`/`.jsx` vers `.ts`/`.tsx` au même
   chemin sans extension et pour le même symbole source, même sans renommage Git.
   Le rapport signale `typescriptMigration` et garde les changements de contenu visibles.
