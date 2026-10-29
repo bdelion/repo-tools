@@ -105,9 +105,26 @@ Si plusieurs hotfix portent la même version et que cette version n’est pas d�
 retenue par un tag ou une release, l’analyse du dépôt échoue avant publication
 avec un message d’ambiguïté listant les branches. Aucun choix arbitraire n’est fait.
 
-Les analyses JSON contiennent `version`, `kind`, `branch` et `sha`. Les liens des
-rapports pointent vers le SHA du commit ; les comparaisons utilisent aussi les SHA
-afin qu’un nouveau commit sur une branche ne réutilise pas un ancien diff.
+Les analyses JSON contiennent `version`, `kind`, `branch` et `sha`. Les comparaisons
+utilisent les SHA afin qu’un nouveau commit sur une branche ne réutilise pas un ancien diff.
+Les liens Markdown et Excel utilisent une référence nommée : la référence de plus
+haute version analysée si le fichier y existe encore, sinon le dernier tag analysé
+où il existe. Sans tag correspondant, la dernière branche candidate connue sert
+de repli. L’existence des fichiers est vérifiée dans les arbres Git ; le fichier
+d’export et le fichier source sont traités indépendamment. Une branche pouvant
+évoluer après la génération, ses liens reflètent son état au moment de leur ouverture.
+
+Les lignes sont triées naturellement sur le nom de composant affiché (`Component2`
+avant `Component10`), avec l’identité comme critère secondaire déterministe.
+Les homonymes restent distincts. Un renommage/déplacement partage une seule ligne
+si une correspondance unique repose sur un déplacement Git, le même symbole source,
+ou un contenu source strictement identique. `git diff --find-renames=50%` détecte
+les déplacements de fichiers ; il s’agit d’une heuristique, pas d’une preuve métier.
+Deux symboles source connus et différents ne sont pas fusionnés. Une ressemblance
+de noms ou un AST identique seul ne suffit pas. Les cas ambigus restent ajoutés/supprimés.
+Les comparaisons JSON et Markdown exposent `previous`, `changeReasons` et
+`historyMatch` pour les composants modifiés ; la matrice conserve les anciens noms
+et le motif du rapprochement. Les identifiants bruts des analyses restent inchangés.
 
 Après une analyse réussie, les fichiers d’analyse et de comparaison devenus
 obsolètes sont supprimés pour le seul dépôt concerné, puis les comparaisons

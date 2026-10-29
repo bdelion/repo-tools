@@ -451,6 +451,7 @@ async function analyzeTag(repo, repoPath, reference) {
         exportType: ex.type,     // 'default-named' | 'named' | 'exportAll'
         file: path.relative(repoPath, path.join(srcPath, relFile)), // fichier d'export (barrel)
         sourcefile: sourceRel ? path.relative(repoPath, path.join(srcPath, sourceRel)) : null,
+        sourceExport: resolved.name,
         from: ex.source,
         visibleName: metadata.visibleName,
         declarationName: metadata.declarationName,
@@ -557,7 +558,7 @@ async function analyzeRepo(repo) {
       }
     }
     for (let i = 1; i < snapshots.length; i++) {
-      await generateReports(repo.name, snapshots[i - 1], snapshots[i], outputs);
+      await generateReports(repo.name, snapshots[i - 1], snapshots[i], outputs, snapshots);
     }
     const summary = {
       repo: repo.name,

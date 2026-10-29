@@ -1,434 +1,204 @@
 const path = require('node:path');
 const ExcelJS = require('exceljs');
 const { comparisonFileName } = require('../versionReferences.cjs');
+const { createGitHistoryReader } = require('./gitHistory.cjs');
+const { componentKey, normalizePath, compareComponents, buildComponentHistory } = require('./componentHistory.cjs');
 
-function createVersionReports({ config, hasGitDiff, logDebug, collectJson }) {
-  const CFG = config;
-  function componentKey(component) {
-    return component.id ?? `${String(component.file).replace(/\\/g, '/')}#${component.name}`;
-  }
+function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, createHistoryReader = createGitHistoryReader }) {
+  const contexts = new WeakMap();
+  const included = component => (CFG.includeExportAll || component.exportType !== 'exportAll') &&
+    (!CFG.excludeDefaultNameEverywhere || component.name !== 'default');
+  const latest = history => [...history].reverse().find(Boolean);
+  const escapeCell = value => String(value ?? '').replace(/\|/g, '\\|').replace(/\n/g, '<br/>');
+  const mdLink = (label, url) => url ? `[${label}](${url})` : '';
 
-  function githubLink(repoName, ref, filePath) {
-    return `${CFG.githubBaseUrl}/${repoName}/blob/${encodeURIComponent(ref)}/${String(filePath).replace(/\\/g, '/')}`;
-  }
-
-  // Helper lien Markdown sûr
-  function mdLink(label, url) {
-    return label && url ? `[${label}](${url})` : '';
-  }
-
-  // Walk récursif (sans dépendance) + filtres
-  function areASTsEqualFromJSON(astJson1, astJson2) {
-    try {
-      if (!astJson1 || !astJson2) return false;
-      const a1 = JSON.parse(astJson1);
-      const a2 = JSON.parse(astJson2);
-      return JSON.stringify(a1) === JSON.stringify(a2);
-    } catch {
-      return false;
+  function markdownTable(rows) {
+    if (CFG.markdownDropEmptyColumns && rows.length > 1) {
+      const keep = rows[0].map((_, index) => index === 0 || rows.slice(1).some(row => String(row[index] ?? '').trim()));
+      rows = rows.map(row => row.filter((_, index) => keep[index]));
     }
+    const render = row => `|${row.map(escapeCell).join('|')}|`;
+    return [render(rows[0]), render(rows[0].map(() => '---')), ...rows.slice(1).map(render)].join('\n');
   }
 
-  // Métadonnées robustes
-  function labelOf(p) {
-    if (!p) return '';
-    const normalized = String(p).replace(/\\/g, '/');
-    return CFG.markdownShowFullPathLabels ? normalized : path.basename(normalized);
+  function formatMarkdown(content) {
+    return CFG.markdownCompactTables ? content.replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n') : content;
   }
 
-  async function compareComponents(repoName, from, to, prev, next) {
-    const prevMap = new Map(prev.map((c) => [componentKey(c), c]));
-    const nextMap = new Map(next.map((c) => [componentKey(c), c]));
+  async function context(repoName, snapshots) {
+    if (!contexts.has(snapshots)) {
+      contexts.set(snapshots, (async () => {
+        const reader = createHistoryReader(path.join(CFG.tmpDir, repoName));
+        const trees = [];
+        const renames = [];
+        for (let index = 0; index < snapshots.length; index++) {
+          trees.push(await reader.files(snapshots[index].reference.sha));
+          if (index) renames.push(await reader.renames(snapshots[index - 1].reference.sha, snapshots[index].reference.sha));
+        }
+        const filtered = snapshots.map(snapshot => ({ ...snapshot, result: {
+          ...snapshot.result, components: snapshot.result.components.filter(included),
+        } }));
+        return { ...buildComponentHistory(filtered, renames), snapshots, trees, renames, deltas: new Map() };
+      })());
+    }
+    return contexts.get(snapshots);
+  }
 
-    const added = [...nextMap.keys()].filter((x) => !prevMap.has(x));
-    const removed = [...prevMap.keys()].filter((x) => !nextMap.has(x));
-    const unchanged = [];
-    const changed = [];
+  function fileLink(repoName, ctx, lineage, field) {
+    const history = ctx.rows.get(lineage) ?? [];
+    const at = index => {
+      for (let position = index; position >= 0; position--) {
+        if (history[position]) return normalizePath(history[position][field]);
+      }
+      return '';
+    };
+    const lastIndex = ctx.snapshots.length - 1;
+    const exists = index => at(index) && ctx.trees[index].has(at(index));
+    let index = exists(lastIndex) ? lastIndex : -1;
+    if (index < 0) {
+      for (let candidate = lastIndex; candidate >= 0; candidate--) {
+        if (ctx.snapshots[candidate].reference.kind === 'tag' && exists(candidate)) { index = candidate; break; }
+      }
+    }
+    // Un composant jamais publié peut n'avoir qu'une branche candidate connue.
+    if (index < 0) {
+      for (let candidate = lastIndex; candidate >= 0; candidate--) {
+        if (exists(candidate)) { index = candidate; break; }
+      }
+    }
+    if (index < 0) return { file: '', url: '' };
+    const reference = ctx.snapshots[index].reference;
+    const ref = reference.branch ?? (reference.kind === 'develop' ? 'develop' : reference.label);
+    const file = at(index);
+    const encodedPath = file.split('/').map(encodeURIComponent).join('/');
+    return { file, url: `${CFG.githubBaseUrl}/${repoName}/blob/${encodeURIComponent(ref)}/${encodedPath}` };
+  }
 
-    for (const name of nextMap.keys()) {
-      if (!prevMap.has(name)) continue;
-
-      const prevComp = prevMap.get(name);
-      const nextComp = nextMap.get(name);
-
-      let compChanged = false;
+  async function delta(repoName, ctx, index) {
+    if (ctx.deltas.has(index)) return ctx.deltas.get(index);
+    const previous = ctx.maps[index - 1] ?? new Map();
+    const next = ctx.maps[index];
+    const added = [...next.keys()].filter(key => !previous.has(key));
+    const removed = [...previous.keys()].filter(key => !next.has(key));
+    const changed = [], unchanged = [];
+    const nextMap = new Map(next);
+    for (const [key, current] of next) {
+      const before = previous.get(key);
+      if (!before) continue;
       const reasons = [];
-
-      if (prevComp.contentHash && nextComp.contentHash && prevComp.contentHash !== nextComp.contentHash) {
-        compChanged = true; reasons.push('diffContentHash');
+      if (before.name !== current.name) reasons.push('nameChanged');
+      if (normalizePath(before.file) !== normalizePath(current.file)) reasons.push('exportMoved');
+      if (normalizePath(before.sourcefile) !== normalizePath(current.sourcefile)) reasons.push('sourceMoved');
+      if (before.contentHash && current.contentHash && before.contentHash !== current.contentHash) reasons.push('diffContentHash');
+      if (before.sourceAST && current.sourceAST && before.sourceAST !== current.sourceAST) reasons.push('diffAST');
+      if (before.sourcefile && normalizePath(before.sourcefile) === normalizePath(current.sourcefile) &&
+          await hasGitDiff(repoName, ctx.snapshots[index - 1].reference.sha, ctx.snapshots[index].reference.sha, normalizePath(before.sourcefile))) {
+        reasons.push('diffGit');
       }
-      if (prevComp.sourceAST && nextComp.sourceAST) {
-        const sameAst = areASTsEqualFromJSON(prevComp.sourceAST, nextComp.sourceAST);
-        if (!sameAst) { compChanged = true; reasons.push('diffAST'); }
-      }
-      if (prevComp.sourcefile && nextComp.sourcefile && prevComp.sourcefile === nextComp.sourcefile) {
-        const gitRef1 = from.reference.sha;
-        const gitRef2 = to.reference.sha;
-        const gitChanged =await hasGitDiff(repoName, gitRef1, gitRef2, prevComp.sourcefile);
-        if (gitChanged) {
-          compChanged = true;
-          reasons.push('diffGit');
-        }
-      }
-
-      if (compChanged) {
-        nextMap.set(name, { ...nextComp, changeReasons: reasons });
-        changed.push(name);
-      } else {
-        unchanged.push(name);
-      }
+      if (reasons.length) {
+        const renamedSource = ctx.renames[index - 1]?.get(normalizePath(before.sourcefile)) === normalizePath(current.sourcefile);
+        const historyMatch = componentKey(before) === componentKey(current) ? 'sameIdentity'
+          : renamedSource ? 'gitSourceRename'
+          : normalizePath(before.sourcefile) === normalizePath(current.sourcefile) && before.sourceExport && before.sourceExport === current.sourceExport
+            ? 'sameSourceSymbol'
+            : ctx.renames[index - 1]?.get(normalizePath(before.file)) === normalizePath(current.file) && before.name === current.name
+              ? 'gitExportRename' : 'identicalContent';
+        nextMap.set(key, { ...current, changeReasons: reasons, historyMatch, previous: {
+          id: componentKey(before), name: before.name, file: before.file, sourcefile: before.sourcefile,
+        } });
+        changed.push(key);
+      } else unchanged.push(key);
     }
-
-    return { added, removed, changed, unchanged, nextMap };
+    const result = { added, removed, changed, unchanged, nextMap, previous };
+    ctx.deltas.set(index, result);
+    return result;
   }
 
-  // ——— Minification / formatage Markdown ———
-
-  // Supprimer les colonnes 100% vides (optionnel)
-  function dropEmptyColumns(rows) {
-    if (!rows || rows.length < 2) return rows;
-    const header = rows[0];
-    const body = rows.slice(1);
-
-    // Colonnes vides = toutes cellules nulles/vides/whitespace
-    const emptyIdx = header.map((_, i) =>
-      body.every(r => !r[i] || String(r[i]).trim() === '')
-    );
-
-    // Préserve toujours la première colonne (Component/Nom)
-    if (emptyIdx.length > 0) emptyIdx[0] = false;
-
-    return rows.map(r => r.filter((_, i) => !emptyIdx[i]));
-  }
-
-  function minifyMarkdownString(md) {
-    return md
-      .replace(/[ \t]+$/gm, '')  // trim fin de ligne
-      .replace(/\n{3,}/g, '\n\n');
-  }
-
-  function escapeCell(value) {
-    if (value === null || value === undefined) return '';
-    return String(value)
-      .replace(/\|/g, '\\|')
-      .replace(/\n/g, '<br/>');
-  }
-
-  function formatMarkdownTable(rows, { dropEmpty = false } = {}) {
-    if (!rows || rows.length === 0) return '';
-
-    const src = dropEmpty ? dropEmptyColumns(rows) : rows;
-
-    const normalizeRow = (cells) =>
-      '|' + cells.map(escapeCell).join('|') + '|';
-
-    const header = normalizeRow(src[0]);
-    const separator =
-      '|' + src[0].map(() => '---').join('|') + '|';
-
-    const body = src.slice(1).map(normalizeRow);
-
-    return [header, separator, ...body].join('\n');
-  }
-
-  // ✅ Pair-à-pair : libellé = basename (comme ton ancien script)
-  function generateMarkdownTable(components, repoName, tag1, tag2, type) {
-    if (!components || components.length === 0) return '';
-
-    const headers = ['Nom', 'Visible Name', 'Reasons', 'Export File', 'Source File'];
-    const rows = [headers];
-
-    // Pour les liens : tag2 sauf pour "removed" (tag1)
-    const tag = type === 'removed' ? tag1 : tag2;
-
-    for (const c of components) {
-      const exportLabel = c?.file ? path.basename(String(c.file).replace(/\\/g, '/')) : '';
-      const exportUrl = c?.file ? githubLink(repoName, tag, c.file) : '';
-      const exportLink = mdLink(exportLabel, exportUrl);
-
-      const sourceLabel = c?.sourcefile ? path.basename(String(c.sourcefile).replace(/\\/g, '/')) : '';
-      const sourceUrl = c?.sourcefile ? githubLink(repoName, tag, c.sourcefile) : '';
-      const sourceLink = mdLink(sourceLabel, sourceUrl);
-
-      rows.push([
-        c.name ?? '',
-        c.visibleName ?? '',
-        Array.isArray(c.changeReasons) ? c.changeReasons.join(', ') : '',
-        exportLink,
-        sourceLink
-      ]);
+  function pairTable(repoName, ctx, entries) {
+    if (!entries.length) return '_Aucun_';
+    const rows = [['Nom', 'Previous Name', 'Visible Name', 'Reasons', 'History Match', 'Previous Export File', 'Previous Source File', 'Export File', 'Source File']];
+    for (const { lineage, component } of entries) {
+      const exported = fileLink(repoName, ctx, lineage, 'file');
+      const source = fileLink(repoName, ctx, lineage, 'sourcefile');
+      rows.push([component.name, component.previous?.name !== component.name ? component.previous?.name ?? '' : '',
+        component.visibleName ?? '', (component.changeReasons ?? []).join(', '), component.historyMatch ?? '',
+        component.changeReasons?.includes('exportMoved') ? normalizePath(component.previous.file) : '',
+        component.changeReasons?.includes('sourceMoved') ? normalizePath(component.previous.sourcefile) : '',
+        mdLink(path.posix.basename(exported.file), exported.url), mdLink(path.posix.basename(source.file), source.url)]);
     }
-
-    return formatMarkdownTable(rows, {
-      dropEmpty: CFG.markdownDropEmptyColumns
-    });
+    return markdownTable(rows);
   }
 
-  async function generateReports(repoName, from, to, outputs) {
-    const tag1 = from.reference.label;
-    const tag2 = to.reference.label;
-    const result1 = from.result;
-    const result2 = to.result;
-    console.log(`\t⚖️ Génération du rapport entre ${tag1} et ${tag2}...`);
-
-    // Option B: exclure exportAll et name === 'default' des comparaisons
-    const previous = result1.components.filter(c => (CFG.includeExportAll || c.exportType !== 'exportAll') && (!CFG.excludeDefaultNameEverywhere || c.name !== 'default'));
-    const next = result2.components.filter(c => (CFG.includeExportAll || c.exportType !== 'exportAll') && (!CFG.excludeDefaultNameEverywhere || c.name !== 'default'));
-
-    const comparison = await compareComponents(repoName, from, to, previous, next);
-
-    // Tri par nom dans chaque section du rapport
-    const sortByName = (arr) =>
-      [...(arr || [])].sort((a, b) =>
-        String(a?.name || '').localeCompare(String(b?.name || ''), 'fr', { sensitivity: 'base' })
-      );
-
-    const jsonReport = {
-      repository: repoName,
-      from: tag1,
-      to: tag2,
-      added: sortByName(comparison.added.map((n) => comparison.nextMap.get(n))),
-      removed: sortByName(comparison.removed.map((n) => result1.components.find((c) => componentKey(c) === n))),
-      changed: sortByName(comparison.changed.map((n) => comparison.nextMap.get(n))),
-      unchanged: sortByName(comparison.unchanged.map((n) => comparison.nextMap.get(n)))
+  async function generateReports(repoName, from, to, outputs, snapshots = [from, to]) {
+    const ctx = await context(repoName, snapshots);
+    const index = snapshots.indexOf(to);
+    const comparison = await delta(repoName, ctx, index);
+    const entries = (keys, map) => keys.map(lineage => ({ lineage, component: map.get(lineage) }))
+      .sort((a, b) => compareComponents(a.component, b.component));
+    const groups = {
+      added: entries(comparison.added, comparison.nextMap), removed: entries(comparison.removed, comparison.previous),
+      changed: entries(comparison.changed, comparison.nextMap), unchanged: entries(comparison.unchanged, comparison.nextMap),
     };
-
-    const jsonPath = path.join(CFG.analysisDir, comparisonFileName(repoName, tag1, tag2, 'json'));
-    collectJson(outputs, jsonPath, jsonReport);
-
-    const md = `
-  # Rapport de comparaison des composants
-  **Repository** : ${repoName}
-  **De** : ${tag1}
-  **À** : ${tag2}
-
-  ## ✅ Nouveaux composants
-  ${generateMarkdownTable(jsonReport.added, repoName, from.reference.sha, to.reference.sha, 'added') || '_Aucun_'}
-
-  ## ❌ Composants supprimés
-  ${generateMarkdownTable(jsonReport.removed, repoName, from.reference.sha, to.reference.sha, 'removed') || '_Aucun_'}
-
-  ## 🔄 Composants modifiés
-  ${generateMarkdownTable(jsonReport.changed, repoName, from.reference.sha, to.reference.sha, 'changed') || '_Aucun_'}
-
-  ## 🔁 Composants inchangés
-  ${generateMarkdownTable(jsonReport.unchanged, repoName, from.reference.sha, to.reference.sha, 'unchanged') || '_Aucun_'}
-  `.trim();
-
-    const outMd = CFG.markdownCompactTables ? minifyMarkdownString(md) : md;
-    const mdPath = path.join(CFG.analysisDir, comparisonFileName(repoName, tag1, tag2, 'md'));
-    outputs.set(path.resolve(mdPath), outMd);
-
-    logDebug(`Rapport préparé : ${mdPath}`);
-  }
-
-  function getLastComponentData(compName, snapshots) {
-    const snapshot = [...snapshots].reverse().find(item => item.result.components.some(c => componentKey(c) === compName));
-    return {
-      sha: snapshot?.reference.sha,
-      data: snapshot?.result.components.find(c => componentKey(c) === compName),
-    };
-  }
-
-  // ✅ Global : on tient compte de diffGit (async) + exclus exportAll & default
-  async function buildComparisonMatrix(repoName, components, snapshots) {
-    const matrix = {};
-    for (let i = 0; i < snapshots.length; i++) {
-      const snapshot = snapshots[i];
-      const tag = snapshot.reference.label;
-
-      const current = snapshot.result.components
-        .filter(c => (CFG.includeExportAll || c.exportType !== 'exportAll') && (!CFG.excludeDefaultNameEverywhere || c.name !== 'default'));
-      const currentMap = new Map(current.map((c) => [componentKey(c), c]));
-      const currentSet = new Set(currentMap.keys());
-
-      const previous = snapshots[i - 1];
-      const prevTag = previous?.reference.label;
-      const prev = previous
-        ? (previous.result.components
-          .filter(c => (CFG.includeExportAll || c.exportType !== 'exportAll') && (!CFG.excludeDefaultNameEverywhere || c.name !== 'default')))
-        : [];
-      const prevMap = new Map(prev.map((c) => [componentKey(c), c]));
-      const prevSet = new Set(prevMap.keys());
-
-      for (const comp of components) {
-        if (!matrix[comp]) matrix[comp] = {};
-        if (i === 0) {
-          matrix[comp][tag] = currentSet.has(comp) ? '+' : '';
-          continue;
-        }
-
-        const inCurrent = currentSet.has(comp);
-        const inPrevious = prevSet.has(comp);
-
-        if (inCurrent && inPrevious) {
-          let compChanged = false;
-          const reasons = [];
-          const prevItem = prevMap.get(comp);
-          const currItem = currentMap.get(comp);
-
-          // Hash
-          const prevHash = prevItem?.contentHash;
-          const currHash = currItem?.contentHash;
-          if (prevHash && currHash && prevHash !== currHash) {
-            compChanged = true; reasons.push('diffContentHash');
-          }
-
-          // AST
-          const prevAST = prevItem?.sourceAST;
-          const currAST = currItem?.sourceAST;
-          if (prevAST && currAST && !areASTsEqualFromJSON(prevAST, currAST)) {
-            compChanged = true; reasons.push('diffAST');
-          }
-
-          // Git diff (même fichier source)
-          const prevFile = prevItem?.sourcefile;
-          const currFile = currItem?.sourcefile;
-          if (prevTag && prevFile && currFile && prevFile === currFile) {
-            try {
-              const gitRef1 = previous.reference.sha;
-              const gitRef2 = snapshot.reference.sha;
-              const gitChanged = await hasGitDiff(repoName, gitRef1, gitRef2, prevFile);
-              if (gitChanged) { compChanged = true; reasons.push('diffGit'); }
-            } catch (e) {
-              throw new Error(`Comparaison impossible pour ${comp}: ${e.message}`, { cause: e });
-            }
-          }
-
-          matrix[comp][tag] = compChanged ? `~\n${reasons.join('\n')}` : '=';
-        } else if (inCurrent && !inPrevious) {
-          matrix[comp][tag] = '+';
-        } else if (!inCurrent && inPrevious) {
-          matrix[comp][tag] = '-';
-        } else {
-          matrix[comp][tag] = '';
-        }
-      }
-    }
-    return matrix;
-  }
-
-  async function generateExcelReport(repoName, snapshots, components, matrix, duplicates, outputs) {
-    const tags = snapshots.map(item => item.reference.label);
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Component Comparison');
-
-    const tagsWithBreaking = tags.map((t) => {
-      const hasBreaking = components.some((c) => matrix[c]?.[t] === '-');
-      return hasBreaking ? `${t} 💥` : t;
-    });
-
-    sheet.addRow(['Component', 'Visible Name', 'Uses ForwardRef', 'Default Export', 'Export File', 'Source File', ...tagsWithBreaking]);
-
-    components.forEach((comp) => {
-      const { sha, data } = getLastComponentData(comp, snapshots);
-      const exportFile = data?.file ? githubLink(repoName, sha, data.file) : '';
-      const sourceFile = data?.sourcefile ? githubLink(repoName, sha, data.sourcefile) : '';
-      const displayName = duplicates.has(comp.toLowerCase()) ? `${data?.name ?? comp} ⚠️` : data?.name ?? comp;
-
-      const row = [
-        displayName,
-        data?.visibleName ?? '',
-        data?.usesForwardRef ?? false,
-        data?.isDefaultExport ?? false,
-        { text: labelOf(data?.file), hyperlink: exportFile },
-        { text: labelOf(data?.sourcefile), hyperlink: sourceFile },
-        ...tags.map((t) => matrix[comp][t] ?? '')
-      ];
-      sheet.addRow(row);
-    });
-
-    sheet.columns.forEach((col) => (col.width = 30));
-    const excelPath = path.join(CFG.reportsDir, `${repoName}_component_comparison.xlsx`);
-    outputs.set(path.resolve(excelPath), Buffer.from(await workbook.xlsx.writeBuffer()));
-    logDebug(`Rapport Excel préparé : ${excelPath}`);
-  }
-
-  // ✅ Global : libellé = chemin complet
-  async function generateMarkdownReport(repoName, snapshots, components, matrix, duplicates, outputs) {
-    const tags = snapshots.map(item => item.reference.label);
-    const emojiMap = { '+': '🟢', '-': '🔴', '=': '⚪', '~': '🟡' };
-    const getEmoji = (value) => (typeof value === 'string' ? (emojiMap[value.charAt(0)] || '') : '');
-    const getDetails = (value) => (typeof value === 'string' && value.startsWith('~')
-      ? value.split('\n').slice(1).join(', ')
-      : '');
-
-    const tagsWithBreaking = tags.map((t) =>
-      components.some((c) => matrix[c]?.[t] === '-') ? `${t} 💥` : t
-    );
-
-    const rows = [['Component', 'Visible Name', 'Uses ForwardRef', 'Default Export', 'Export File', 'Source File', ...tagsWithBreaking]];
-
-    components.forEach((comp) => {
-      const { sha, data } = getLastComponentData(comp, snapshots);
-
-      const exportLabel = data?.file ? String(data.file).replace(/\\/g, '/') : '';
-      const exportUrl = data?.file ? githubLink(repoName, sha, data.file) : '';
-      const exportFile = mdLink(exportLabel, exportUrl);
-
-      const sourceLabel = data?.sourcefile ? String(data.sourcefile).replace(/\\/g, '/') : '';
-      const sourceUrl = data?.sourcefile ? githubLink(repoName, sha, data.sourcefile) : '';
-      const sourceFile = mdLink(sourceLabel, sourceUrl);
-
-      const displayName = duplicates.has(comp.toLowerCase()) ? `${data?.name ?? comp} ⚠️` : data?.name ?? comp;
-
-      const statusCells = tags.map((t) => {
-        const e = getEmoji(matrix[comp][t]);
-        const d = getDetails(matrix[comp][t]);
-        return d ? `${e} ${d}` : e;
-      });
-
-      rows.push([
-        displayName,
-        data?.visibleName ?? '',
-        String(data?.usesForwardRef ?? ''),
-        String(data?.isDefaultExport ?? ''),
-        exportFile,
-        sourceFile,
-        ...statusCells
-      ]);
-    });
-
-    const table = formatMarkdownTable(rows, {
-      dropEmpty: CFG.markdownDropEmptyColumns
-    });
-
-    const md = `# Component Comparison Report for ${repoName}\n\n${table}`;
-    const outMd = CFG.markdownCompactTables ? minifyMarkdownString(md) : md;
-
-    const mdPath = path.join(CFG.reportsDir, `${repoName}_component_comparison.md`);
-    outputs.set(path.resolve(mdPath), outMd);
-    logDebug(`Rapport Markdown préparé : ${mdPath}`);
+    const json = { repository: repoName, from: from.reference.label, to: to.reference.label };
+    for (const [name, group] of Object.entries(groups)) json[name] = group.map(entry => entry.component);
+    collectJson(outputs, path.join(CFG.analysisDir, comparisonFileName(repoName, json.from, json.to, 'json')), json);
+    const sections = [['added', 'Nouveaux composants'], ['removed', 'Composants supprimés'], ['changed', 'Composants modifiés'], ['unchanged', 'Composants inchangés']];
+    const markdown = [`# Rapport de comparaison des composants`, `**Repository** : ${repoName}`, `**De** : ${json.from}`, `**À** : ${json.to}`, '',
+      ...sections.flatMap(([key, title]) => [`## ${title}`, '', pairTable(repoName, ctx, groups[key]), ''])].join('\n');
+    const target = path.join(CFG.analysisDir, comparisonFileName(repoName, json.from, json.to, 'md'));
+    outputs.set(path.resolve(target), formatMarkdown(markdown));
+    logDebug(`Rapport préparé : ${target}`);
   }
 
   async function generateComponentComparisonReports(repoName, snapshots, outputs) {
-    // set global unique component names
-    const all = new Set();
-    snapshots.forEach(({ result }) => {
-      result.components
-        .filter(c => (CFG.includeExportAll || c.exportType !== 'exportAll') && (!CFG.excludeDefaultNameEverywhere || c.name !== 'default'))
-        .forEach((c) => all.add(componentKey(c)));
-    });
-
-    // Tri alphabétique insensible à la casse
-    const sorted = Array.from(all).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-    const lowerSeen = {};
-    const duplicates = new Set();
-    sorted.forEach((n) => {
-      const lower = n.toLowerCase();
-      if (lowerSeen[lower]) duplicates.add(lower);
-      else lowerSeen[lower] = n;
-    });
-
-    const matrix = await buildComparisonMatrix(repoName, sorted, snapshots);
-    await generateExcelReport(repoName, snapshots, sorted, matrix, duplicates, outputs);
-    await generateMarkdownReport(repoName, snapshots, sorted, matrix, duplicates, outputs);
+    const ctx = await context(repoName, snapshots);
+    const components = [...ctx.rows.keys()].sort((a, b) => compareComponents(latest(ctx.rows.get(a)), latest(ctx.rows.get(b))));
+    const matrix = new Map(components.map(key => [key, []]));
+    for (let index = 0; index < snapshots.length; index++) {
+      const comparison = await delta(repoName, ctx, index);
+      for (const key of components) {
+        let cell = '';
+        const current = comparison.nextMap.get(key);
+        if (current) {
+          if (comparison.changed.includes(key)) {
+            const details = current.changeReasons.map(reason => reason === 'nameChanged'
+              ? `nameChanged: ${current.previous.name} -> ${current.name}` : reason);
+            if (current.historyMatch !== 'sameIdentity') details.push(current.historyMatch);
+            cell = `~\n${details.join('\n')}`;
+          } else cell = comparison.added.includes(key) ? '+' : '=';
+          if (current.name !== latest(ctx.rows.get(key)).name) cell += `\nname: ${current.name}`;
+        } else if (comparison.removed.includes(key)) cell = '-';
+        matrix.get(key).push(cell);
+      }
+    }
+    const headers = snapshots.map((snapshot, index) => `${snapshot.reference.label}${components.some(key => matrix.get(key)[index] === '-') ? ' 💥' : ''}`);
+    const columns = ['Component', 'Visible Name', 'Uses ForwardRef', 'Default Export', 'Export File', 'Source File', ...headers];
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Component Comparison');
+    sheet.addRow(columns);
+    const markdownRows = [columns];
+    const names = new Map();
+    for (const key of components) {
+      const name = latest(ctx.rows.get(key)).name.toLocaleLowerCase('fr');
+      names.set(name, (names.get(name) ?? 0) + 1);
+    }
+    const emoji = { '+': '🟢', '-': '🔴', '=': '⚪', '~': '🟡' };
+    for (const key of components) {
+      const data = latest(ctx.rows.get(key));
+      const name = `${data.name}${names.get(data.name.toLocaleLowerCase('fr')) > 1 ? ' ⚠️' : ''}`;
+      const exported = fileLink(repoName, ctx, key, 'file');
+      const source = fileLink(repoName, ctx, key, 'sourcefile');
+      const label = file => CFG.markdownShowFullPathLabels ? file : path.posix.basename(file);
+      const base = [name, data.visibleName ?? '', data.usesForwardRef ?? false, data.isDefaultExport ?? false];
+      sheet.addRow([...base, { text: label(exported.file), hyperlink: exported.url }, { text: label(source.file), hyperlink: source.url }, ...matrix.get(key)]);
+      markdownRows.push([...base, mdLink(label(exported.file), exported.url), mdLink(label(source.file), source.url),
+        ...matrix.get(key).map(cell => cell ? `${emoji[cell[0]] ?? ''}${cell.includes('\n') ? ` ${cell.split('\n').slice(1).join(', ')}` : ''}` : '')]);
+    }
+    sheet.columns.forEach(column => { column.width = 30; });
+    outputs.set(path.resolve(CFG.reportsDir, `${repoName}_component_comparison.xlsx`), Buffer.from(await workbook.xlsx.writeBuffer()));
+    outputs.set(path.resolve(CFG.reportsDir, `${repoName}_component_comparison.md`),
+      formatMarkdown(`# Component Comparison Report for ${repoName}\n\n${markdownTable(markdownRows)}`));
   }
-
-  // --------------------------
-  // Analyse d’un repo complet
-  // --------------------------
-
 
   return { generateReports, generateComponentComparisonReports };
 }

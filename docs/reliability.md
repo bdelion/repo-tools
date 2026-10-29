@@ -29,6 +29,17 @@ Dans l’analyse des versions, les composants sont identifiés par le fichier
 d’export et le nom exporté. Les comparaisons et matrices ne fusionnent plus les
 homonymes. Le fichier source est résolu relativement au fichier de réexport,
 avec le même résolveur ; il n’y a plus de rapprochement par basename.
+Pour suivre un renommage entre versions consécutives, le rapport rapproche les
+identités uniquement sur une correspondance unique : déplacement Git, même symbole
+source (`sourceExport`), ou contenu source strictement identique. Les empreintes
+portant sur le fichier entier, deux symboles source connus et différents ne sont
+pas fusionnés. Les cas ambigus restent ajoutés/supprimés ; aucune similarité de noms
+ne suffit. Les analyses gardent leurs identifiants d’origine. Le rapport indique
+les anciens noms/chemins et le motif du rapprochement.
+Les liens utilisent la référence nommée de plus haute version analysée si le fichier
+y existe encore, sinon le dernier tag analysé où il existe (ou, sans tag, la dernière
+candidate connue). Cette vérification utilise les arbres Git et s’applique séparément
+au fichier d’export et à sa source. Le tri porte sur le nom affiché, en ordre naturel.
 `includeExportAll` active l’expansion de `export *`, sans exporter `default`.
 Les SVG déclarés dans `validAssetExtensions` restent inventoriés dans l’analyse
 des versions lorsqu’ils sont réexportés par chemin relatif ; leur contenu est

@@ -27,6 +27,11 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
+- Liens Markdown/Excel vers la référence nommée de plus haute version où le fichier
+  existe encore, avec repli sur le dernier tag en cas de suppression (#7).
+- Tri naturel des rapports sur le nom affiché des composants, en conservant les homonymes (#8).
+- Historique commun pour les déplacements et renommages non ambigus, avec anciens
+  noms/chemins et motif du rapprochement ; les cas ambigus restent séparés (#9).
 - Prise en charge des branches hotfix descriptives via leur version package.json,
   avec erreur explicite si plusieurs hotfix se disputent une version (#5).
 - Sélection du mode JSX selon l’extension : les assertions TypeScript dans un
