@@ -10,7 +10,7 @@ export default defineConfig([
   { files: ["**/*.{js,mjs,cjs,ts}"], plugins: { js }, extends: ["js/recommended"] },
   tseslint.configs.recommended,
   {
-    files: ["src/analyse-component-versions.js", "src/versionReferences.cjs"],
+    files: ["src/analyse-component-versions.js", "src/versionReferences.cjs", "src/publishOutputs.cjs"],
     languageOptions: { sourceType: "commonjs", globals: globals.node },
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },

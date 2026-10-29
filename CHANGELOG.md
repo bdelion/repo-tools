@@ -15,10 +15,15 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Changed
 
+- Transmission de snapshots de version unifiés aux comparaisons et rapports,
+  sans tables parallèles de libellés, résultats et références Git.
 - xxx
 
 ### Fixed
 
+- Préparation de toutes les sorties avant publication et restauration des fichiers
+  et caches précédents en cas d’échec intercepté ; purge des sorties obsolètes
+  différée jusqu’à la publication.
 - Nettoyage des analyses, comparaisons et caches obsolètes lors des transitions
   de versions ou suppressions de branches candidates ; liens et diffs basés sur les SHA (#2).
 - Correction du débordement de pile lors de la génération du graphe contenant des dépendances cycliques (#1) : parcours itératif et tests de non-régression.

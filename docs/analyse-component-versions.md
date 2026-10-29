@@ -105,6 +105,33 @@ Les fichiers d’autres dépôts et les fichiers non reconnus comme sorties de c
 analyseur sont conservés. Les répertoires configurés restent des répertoires de
 sortie : les anciennes versions exclues par les bornes peuvent être nettoyées.
 
+### Préparation et publication des sorties
+
+Chaque version analysée est représentée par un snapshot associant sa référence
+(`version`, `kind`, `label`, `branch`, `sha`) et son résultat. Ce même objet est
+transmis aux comparaisons et générateurs de rapports : les SHA et les libellés
+ne sont plus reconstruits à partir de tables parallèles.
+
+Pour chaque dépôt, toutes les analyses, comparaisons, synthèses, sorties Excel et
+caches sont préparés en mémoire avant publication. Si leur génération échoue,
+les fichiers précédents et les fichiers devenus obsolètes restent en place.
+Les modifications du cache en mémoire sont également annulées, afin qu’un autre
+dépôt traité ensuite ne les persiste pas.
+
+La publication prépare des fichiers temporaires voisins des destinations et
+sauvegarde les fichiers existants. Elle remplace ensuite les sorties puis supprime
+les fichiers obsolètes. Une erreur pendant cette phase déclenche une restauration
+des fichiers remplacés ou supprimés et le retrait des nouveaux fichiers. Les
+fichiers temporaires sont nettoyés ; si la restauration échoue elle aussi, les
+sauvegardes correspondantes sont conservées et l’erreur est signalée.
+
+Ce mécanisme protège contre les erreurs interceptées pendant une exécution.
+Il ne constitue pas une transaction atomique entre plusieurs fichiers : un lecteur
+concurrent peut voir un état intermédiaire, et un arrêt brutal du processus ou
+de la machine ne déclenche pas la restauration. Éviter les exécutions simultanées
+sur les mêmes répertoires. La préparation en mémoire augmente aussi la mémoire
+nécessaire à hauteur des sorties générées.
+
 Les noms de fichiers normalisent les caractères spéciaux en `_`, par exemple :
 
 ```text

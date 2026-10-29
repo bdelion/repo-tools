@@ -21,7 +21,9 @@ test('cycle Git complet : develop, release, hotfix, nouveaux commits, suppressio
         git('add', '.');
         git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-m', `Version ${content}`);
     };
-    const run = () => spawnSync(process.execPath, [script, `--config=${path.join(root, 'config.json')}`], {
+    const run = (preload?: string) => spawnSync(process.execPath, [
+        ...(preload ? ['--require', preload] : []), script, `--config=${path.join(root, 'config.json')}`,
+    ], {
         cwd: root, encoding: 'utf8', timeout: 25000,
         env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: path.join(root, 'empty.gitconfig') },
     });
@@ -62,6 +64,30 @@ test('cycle Git complet : develop, release, hotfix, nouveaux commits, suppressio
         git('switch', '-c', 'release/1.8.0', 'develop');
         git('switch', 'develop');
         commitVersion('1.9.0');
+        const beforeFailure = new Map<string, Buffer>();
+        for (const directory of [analyses, reports]) {
+            for (const file of fs.readdirSync(directory)) {
+                const target = path.join(directory, file);
+                beforeFailure.set(target, fs.readFileSync(target));
+            }
+        }
+        const preload = path.join(root, 'fail-excel.cjs');
+        fs.writeFileSync(preload, [
+            `const ExcelJS = require(${JSON.stringify(path.resolve(__dirname, '../node_modules/exceljs'))});`,
+            'const OriginalWorkbook = ExcelJS.Workbook;',
+            'ExcelJS.Workbook = class extends OriginalWorkbook {',
+            '  get xlsx() {',
+            '    const writer = super.xlsx;',
+            '    writer.writeBuffer = async () => { throw new Error("Injected Excel failure"); };',
+            '    return writer;',
+            '  }',
+            '};',
+        ].join('\n'));
+        const failedGeneration = run(preload);
+        assert.equal(failedGeneration.status, 1, failedGeneration.stderr);
+        assert.match(failedGeneration.stderr, /Injected Excel failure/);
+        for (const [file, content] of beforeFailure) assert.deepEqual(fs.readFileSync(file), content, file);
+        assert.equal(fs.readdirSync(analyses).length + fs.readdirSync(reports).length, beforeFailure.size);
         tags = success();
         assert.deepEqual(tags.map((item: {tag: string}) => item.tag), [
             '1.0.0', '1.0.1 (hotfix candidate)', '1.8.0 (release candidate)', '1.9.0 (develop)',
