@@ -12,10 +12,12 @@ function branchReference(branch, version, sha) {
     return { branch, version, sha, kind: 'develop', label: `${version} (develop)` };
   }
   const match = /^(release|hotfix)\/(.+)$/.exec(branch);
-  if (!match || semver.valid(match[2]) !== match[2] || match[2] !== version) {
+  if (!match) throw new Error(`Branche candidate invalide : ${branch}`);
+  const kind = match[1];
+  const versionedName = semver.valid(match[2]) === match[2];
+  if ((kind === 'release' && !versionedName) || (versionedName && match[2] !== version)) {
     throw new Error(`Version incohérente pour ${branch} : package.json contient ${version}. La version doit être identique au nom de branche.`);
   }
-  const kind = match[1];
   const suffix = kind === 'release' ? 'release candidate' : 'hotfix candidate';
   return { branch, version, sha, kind, label: `${version} (${suffix})` };
 }
@@ -31,14 +33,24 @@ function inVersionRange(version, minimum, maximum) {
 
 function selectReferences(references) {
   const priorities = { tag: 0, release: 1, hotfix: 2, develop: 3 };
-  const selected = new Map();
+  const byVersion = new Map();
   for (const reference of references) {
-    const previous = selected.get(reference.version);
-    if (!previous || priorities[reference.kind] < priorities[previous.kind]) {
-      selected.set(reference.version, reference);
-    }
+    if (!byVersion.has(reference.version)) byVersion.set(reference.version, []);
+    byVersion.get(reference.version).push(reference);
   }
-  return [...selected.values()].sort((a, b) => semver.compare(a.version, b.version));
+  const selected = [];
+  for (const [version, candidates] of byVersion) {
+    const priority = Math.min(...candidates.map(reference => priorities[reference.kind]));
+    const preferred = candidates.filter(reference => priorities[reference.kind] === priority);
+    if (preferred[0].kind === 'hotfix') {
+      const branches = [...new Set(preferred.map(reference => reference.branch))].sort();
+      if (branches.length > 1) {
+        throw new Error(`Hotfix ambiguës pour la version ${version} : ${branches.join(', ')}. Une seule branche hotfix peut être retenue par version.`);
+      }
+    }
+    selected.push(preferred[0]);
+  }
+  return selected.sort((a, b) => semver.compare(a.version, b.version));
 }
 
 function analysisFileName(repoName, label) {

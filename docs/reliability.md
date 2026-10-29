@@ -18,6 +18,10 @@ La granularité reste conservative : chaque export d’un fichier dépend des im
 runtime du fichier entier. Ce n’est pas une analyse d’usage de chaque symbole.
 Les exports CommonJS et les imports calculés dynamiquement ne sont pas inventoriés.
 Les liens symboliques de répertoires ne sont pas suivis pendant le scan.
+Le mode du parseur suit l’extension : TypeScript sans JSX pour `.ts`/`.cts`/`.mts`,
+TypeScript avec JSX pour `.tsx`, et JavaScript avec JSX pour `.js`/`.jsx`.
+Les assertions `<Type>valeur` restent donc valides dans un fichier `.ts` sans
+être interprétées comme des balises JSX. Une véritable erreur de syntaxe reste bloquante.
 Une dépendance locale en dehors de la racine d’origine configurée est rejetée
 explicitement ; élargir cette racine pour analyser plusieurs packages locaux.
 

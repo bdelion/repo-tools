@@ -37,6 +37,28 @@ test('priorité tag > release > hotfix > develop et tri SemVer', () => {
     assert.equal(selectReferences(refs.slice(0, 2))[0].kind, 'hotfix');
 });
 
+test('les hotfix descriptives utilisent la version du package.json (#5)', () => {
+    const candidate = branchReference('hotfix/viewbox_svg', '0.14.1', 'sha');
+    assert.equal(candidate.version, '0.14.1');
+    assert.equal(candidate.branch, 'hotfix/viewbox_svg');
+    assert.equal(candidate.label, '0.14.1 (hotfix candidate)');
+    assert.equal(branchReference('hotfix/ui/viewbox_svg', '0.14.1', 'sha').kind, 'hotfix');
+    assert.throws(() => branchReference('hotfix/0.14.2', '0.14.1', 'sha'), /incohérente/);
+    assert.throws(() => branchReference('release/viewbox_svg', '0.14.1', 'sha'), /incohérente/);
+    assert.throws(() => branchReference('hotfix/viewbox_svg', 'not-semver', 'sha'), /invalide/);
+});
+
+test('plusieurs hotfix pour une même version échouent sauf si un tag ou une release prime (#5)', () => {
+    const first = branchReference('hotfix/viewbox_svg', '0.14.1', 'first');
+    const second = branchReference('hotfix/other_fix', '0.14.1', 'second');
+    assert.throws(() => selectReferences([first, second]), /Hotfix ambiguës.*0\.14\.1.*hotfix\/other_fix.*hotfix\/viewbox_svg/);
+    const versioned = branchReference('hotfix/0.14.1', '0.14.1', 'third');
+    assert.throws(() => selectReferences([versioned, first]), /Hotfix ambiguës/);
+    const release = branchReference('release/0.14.1', '0.14.1', 'release');
+    assert.equal(selectReferences([first, second, release])[0].kind, 'release');
+    assert.equal(selectReferences([first, second, { version: '0.14.1', kind: 'tag', label: '0.14.1', sha: 'tag' }])[0].kind, 'tag');
+});
+
 test('les bornes utilisent SemVer', () => {
     assert.equal(inVersionRange('1.10.0', '1.9.0', '2.0.0'), true);
     assert.equal(inVersionRange('1.8.0', '1.9.0', null), false);

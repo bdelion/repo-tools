@@ -150,7 +150,7 @@ test('cycle Git complet : develop, release, hotfix, nouveaux commits, suppressio
         git('switch', 'main');
         git('branch', '-D', 'release/1.10.0', 'develop');
         git('tag', '-d', '1.0.0', '1.9.0');
-        git('switch', '-c', 'hotfix/2.0.1');
+        git('switch', '-c', 'hotfix/viewbox_svg');
         commitVersion('2.0.1');
         git('switch', 'main');
         // Nouveau clone : les tags supprimés ne sont pas purgés par fetch --prune.
@@ -159,6 +159,7 @@ test('cycle Git complet : develop, release, hotfix, nouveaux commits, suppressio
         fs.writeFileSync(path.join(root, 'config.json'), JSON.stringify(config));
         tags = success();
         assert.deepEqual(tags.map((item: {tag: string}) => item.tag), ['2.0.1 (hotfix candidate)']);
+        assert.equal(tags[0].branch, 'hotfix/viewbox_svg');
         const candidateFile = path.join(analyses, 'fixture_2.0.1__hotfix_candidate_.json');
         const candidateBefore = JSON.parse(fs.readFileSync(candidateFile, 'utf8'));
         assert.ok(candidateBefore.components.length > 0);
@@ -169,6 +170,30 @@ test('cycle Git complet : develop, release, hotfix, nouveaux commits, suppressio
         assert.equal(candidateBefore.sha, candidateAfter.sha);
         assert.notEqual(candidateBefore.fingerprint, candidateAfter.fingerprint);
         assert.equal(candidateAfter.components.length, 0);
+        git('switch', '-c', 'hotfix/other_fix', 'hotfix/viewbox_svg');
+        git('switch', 'main');
+        const beforeAmbiguity = fs.readFileSync(candidateFile);
+        const ambiguous = run();
+        assert.equal(ambiguous.status, 1, ambiguous.stderr);
+        assert.match(ambiguous.stderr, /Hotfix ambiguës.*hotfix\/other_fix.*hotfix\/viewbox_svg/);
+        assert.deepEqual(fs.readFileSync(candidateFile), beforeAmbiguity);
+        git('branch', '-D', 'hotfix/other_fix');
+
+        // Une assertion <Type> dans un fichier .ts reste du TypeScript (#6).
+        delete config.excludeFilePatterns;
+        fs.writeFileSync(path.join(root, 'config.json'), JSON.stringify(config));
+        git('switch', 'hotfix/viewbox_svg');
+        fs.mkdirSync(path.join(source, 'src/internal/hooks'), { recursive: true });
+        fs.writeFileSync(path.join(source, 'src/internal/hooks/useOutsideClick.ts'),
+            'export const useOutsideClick = (event: Event) => <HTMLElement>event.target;\n');
+        fs.appendFileSync(path.join(source, 'src/index.js'),
+            "export { useOutsideClick } from './internal/hooks/useOutsideClick';\n");
+        commitVersion('2.0.1', 'typescript-transition');
+        git('switch', 'main');
+        success();
+        const migrated = JSON.parse(fs.readFileSync(candidateFile, 'utf8'));
+        assert.ok(migrated.components.some((component: { name: string; sourcefile: string }) =>
+            component.name === 'useOutsideClick' && component.sourcefile.replace(/\\/g, '/') === 'src/internal/hooks/useOutsideClick.ts'));
     } finally {
         // Seul le répertoire temporaire créé par ce test peut être supprimé.
         const temporaryBase = path.resolve(os.tmpdir()) + path.sep;

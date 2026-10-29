@@ -5,9 +5,14 @@ const parser = require('@babel/parser');
 const { createHash } = require('node:crypto');
 
 function parseSource(content, file) {
+  const extension = path.extname(file).toLowerCase();
+  const isTypeScript = ['.ts', '.tsx', '.mts', '.cts'].includes(extension);
+  const plugins = [];
+  if (isTypeScript) plugins.push(['typescript', { disallowAmbiguousJSXLike: extension === '.mts' }]);
+  if (!isTypeScript || extension === '.tsx') plugins.push('jsx');
   let ast;
   try {
-    ast = parser.parse(content, { sourceType: 'unambiguous', plugins: ['jsx', 'typescript'] });
+    ast = parser.parse(content, { sourceType: 'unambiguous', plugins });
   } catch (error) {
     throw new Error(`Syntaxe invalide dans ${file}: ${error.message}`, { cause: error });
   }

@@ -14,6 +14,23 @@ import { GraphQueries } from '../src/graph/queries/GraphQueries';
 
 const projectTools = createRequire(__filename)('../src/sourceProject.cjs');
 
+test('le parsing distingue TypeScript et JSX selon l’extension du fichier (#6)', () => {
+    const assertion = 'export const target = <HTMLElement>event.target;';
+    assert.equal(projectTools.parseSource(assertion, 'useOutsideClick.ts').exports[0].name, 'target');
+    assert.equal(projectTools.parseSource(assertion, 'legacy.cts').exports[0].name, 'target');
+    const generic = 'export const identity = <T>(value: T): T => value;';
+    assert.equal(projectTools.parseSource(generic, 'generic.ts').exports[0].name, 'identity');
+    for (const extension of ['js', 'jsx', 'tsx']) {
+        const source = extension === 'tsx'
+            ? 'export const Component = (props: { title: string }) => <div>{props.title}</div>;'
+            : 'export const Component = () => <div>Hello</div>;';
+        assert.equal(projectTools.parseSource(source, `Component.${extension}`).exports[0].name, 'Component');
+    }
+    assert.throws(() => projectTools.parseSource(assertion, 'invalid.tsx'), /Syntaxe invalide/);
+    assert.throws(() => projectTools.parseSource('export const Component = () => <div>', 'broken.tsx'), /Syntaxe invalide/);
+    assert.throws(() => projectTools.parseSource('export const value: string = "TS in JS";', 'invalid.js'), /Syntaxe invalide/);
+});
+
 test('imports par chemin, alias et barrels : les composants homonymes restent distincts', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'repo-tools-sources-'));
     const write = (file: string, content: string) => {

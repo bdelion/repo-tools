@@ -27,6 +27,10 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
+- Prise en charge des branches hotfix descriptives via leur version package.json,
+  avec erreur explicite si plusieurs hotfix se disputent une version (#5).
+- Sélection du mode JSX selon l’extension : les assertions TypeScript dans un
+  fichier `.ts` ne provoquent plus de faux « Unterminated JSX contents » (#6).
 - Les erreurs de résolution locale, parsing et diff Git interrompent le dépôt
   concerné ; les exports homonymes et labels TGF identiques restent distincts.
 - Préparation de toutes les sorties avant publication et restauration des fichiers

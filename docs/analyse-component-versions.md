@@ -13,7 +13,7 @@
 - Analyse des composants dans les fichiers source
 - Support multi-dépôts Git (`repo-react`, `enterprise-assets`, etc.)
 - Scan par tag (tags SemVer stables, hors `-SNAPSHOT`, `-rc.*`, `-hc.*`, etc.)
-- Analyse des branches distantes `develop`, `release/<version>` et `hotfix/<version>`.
+- Analyse des branches distantes `develop`, `release/<version>` et `hotfix/*`.
 - Analyse AST via Babel
 - Extraction des exports et de **métadonnées** (ex. `@visibleName`, usage de `forwardRef`, `memo`, etc.)
 - Détection des changements par **hash contenu**, **diff AST** et **diff GIT**
@@ -81,20 +81,29 @@ Les références sont triées par version **SemVer**, et non par nom ou par date
 | Branche `develop`, package.json `1.9.0` | `1.9.0 (develop)` |
 | Branche `release/1.8.0` | `1.8.0 (release candidate)` |
 | Branche `hotfix/1.7.1` | `1.7.1 (hotfix candidate)` |
+| Branche `hotfix/viewbox_svg`, package.json `0.14.1` | `0.14.1 (hotfix candidate)` |
 
 Une seule référence est conservée pour une même version, avec cette priorité :
 **tag publié > release > hotfix > develop**. Une branche release remplace donc
 develop pour la même version ; un tag remplace ensuite les candidats correspondants.
 Un dépôt sans tag ou sans develop peut être analysé s’il possède une branche candidate.
 
-Pour release et hotfix, la version du nom de branche doit être une version SemVer
-valide et être **strictement identique** à `package.json.version` du commit analysé.
+Pour release, la version du nom de branche doit être une version SemVer valide
+et être **strictement identique** à `package.json.version` du commit analysé.
+Pour `hotfix/<version>`, la même correspondance est exigée lorsque le suffixe est
+une version SemVer canonique. Les hotfix descriptives (`hotfix/viewbox_svg`, par
+exemple) prennent leur version dans le `package.json`, qui doit déclarer une
+version SemVer valide. Le nom réel de la branche reste stocké dans `branch`.
 Par exemple, `release/1.8.0` avec un package `1.8.0-rc.1` est une erreur.
 Develop doit également déclarer une version SemVer valide. Toutes les branches
 release/hotfix découvertes sont validées, même si leur version est hors bornes
 ou masquée par un tag. Une incohérence arrête l’analyse de ce dépôt, avant toute
 modification de ses rapports ; les autres dépôts sont traités et la commande se
 termine avec un code d’erreur.
+
+Si plusieurs hotfix portent la même version et que cette version n’est pas déjà
+retenue par un tag ou une release, l’analyse du dépôt échoue avant publication
+avec un message d’ambiguïté listant les branches. Aucun choix arbitraire n’est fait.
 
 Les analyses JSON contiennent `version`, `kind`, `branch` et `sha`. Les liens des
 rapports pointent vers le SHA du commit ; les comparaisons utilisent aussi les SHA
