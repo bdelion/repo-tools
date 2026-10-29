@@ -27,6 +27,9 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
+- Suivi des sources déplacées exportées à la fois directement et via des barrels :
+  les déplacements Git des exports et les noms inchangés départagent les historiques,
+  sans fusionner les alias ni résoudre arbitrairement les véritables ambiguïtés.
 - Liens Markdown/Excel vers la référence nommée de plus haute version où le fichier
   existe encore, avec repli sur le dernier tag en cas de suppression (#7).
 - Tri naturel des rapports sur le nom affiché des composants, en conservant les homonymes (#8).

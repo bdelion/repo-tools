@@ -24,7 +24,13 @@ function matchComponents(previous, current, renames) {
     else if (fileA && renames.get(fileA) === fileB && a.name === b.name) evidence = 70;
     else if (a.contentHash && a.contentHash === b.contentHash) evidence = 40;
     if (!evidence) return 0;
-    return evidence;
+    // Une même source peut être exportée directement et par plusieurs barrels.
+    // Départager ces exports seulement après avoir établi une correspondance fiable.
+    // Le déplacement du fichier d'export ancre l'export direct ; un nom inchangé
+    // départage les alias. Un nom seul ou un hash commun ambigu ne suffit jamais.
+    const anchoredSource = evidence >= 60;
+    const exportRename = fileA && renames.get(fileA) === fileB;
+    return evidence + (anchoredSource && exportRename ? 8 : 0) + (anchoredSource && a.name === b.name ? 4 : 0);
   };
   // Accepter seulement un meilleur rapprochement unique dans les deux sens.
   while (old.size && next.size) {

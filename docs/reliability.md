@@ -36,6 +36,10 @@ portant sur le fichier entier, deux symboles source connus et différents ne son
 pas fusionnés. Les cas ambigus restent ajoutés/supprimés ; aucune similarité de noms
 ne suffit. Les analyses gardent leurs identifiants d’origine. Le rapport indique
 les anciens noms/chemins et le motif du rapprochement.
+Si plusieurs exports désignent la même source, le déplacement Git du fichier
+d’export puis le nom exporté inchangé servent à départager les correspondances
+déjà établies sur la source. Les exports directs et leurs alias gardent des lignes
+distinctes ; plusieurs alias renommés sans indice supplémentaire restent ambigus.
 Les liens utilisent la référence nommée de plus haute version analysée si le fichier
 y existe encore, sinon le dernier tag analysé où il existe (ou, sans tag, la dernière
 candidate connue). Cette vérification utilise les arbres Git et s’applique séparément

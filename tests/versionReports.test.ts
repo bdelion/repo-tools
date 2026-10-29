@@ -28,6 +28,60 @@ test('historique : symbole source, déplacement Git, contenu unique et ambiguït
     assert.equal(matchComponents([old], [component('Old', 'new.js', 'source.svg', 'hash', 'otherSymbol')], new Map([['old/index.js', 'new.js']])).size, 0);
 });
 
+test('une source R100 exportée directement et par un barrel conserve les deux historiques', async () => {
+    const oldSource = 'src/utils/phones/type.js';
+    const newSource = 'src/contacts/phones/type.js';
+    const oldAlias = component('PersonnePhysiquePhoneType', 'src/components/functionalFragments/personnePhysiqueFragment/index.js', oldSource, 'same', 'Type');
+    const newAlias = component('PersonnePhysiquePhoneType', 'src/functionalContextFrames/personnePhysiqueFragment/index.js', newSource, 'same', 'Type');
+    const oldDirect = component('Type', oldSource, oldSource, 'same', 'Type');
+    const newDirect = component('Type', newSource, newSource, 'same', 'Type');
+    const renames = new Map([[oldSource, newSource]]);
+    for (const previous of [[oldAlias, oldDirect], [oldDirect, oldAlias]]) {
+        for (const current of [[newAlias, newDirect], [newDirect, newAlias]]) {
+            const matches = matchComponents(previous, current, renames);
+            assert.equal(matches.size, 2);
+            assert.equal(matches.get(oldAlias.id), newAlias.id);
+            assert.equal(matches.get(oldDirect.id), newDirect.id);
+        }
+    }
+    // Le déplacement de l'export direct ancre aussi le rapprochement si l'alias change.
+    const renamedAlias = component('PhoneType', newAlias.file, newSource, 'same', 'Type');
+    const matches = matchComponents([oldAlias, oldDirect], [renamedAlias, newDirect], renames);
+    assert.equal(matches.get(oldAlias.id), renamedAlias.id);
+    assert.equal(matches.get(oldDirect.id), newDirect.id);
+    // Deux alias renommés sans autre indice restent réellement ambigus.
+    assert.equal(matchComponents([
+        oldAlias, component('OtherAlias', 'other/old.js', oldSource, 'same', 'Type'),
+    ], [renamedAlias, component('AnotherAlias', 'other/new.js', newSource, 'same', 'Type')], renames).size, 0);
+    const snapshots = [
+        { reference: { kind: 'tag', label: '0.2.0', sha: 'before' }, result: { components: [oldDirect, oldAlias] } },
+        { reference: { kind: 'tag', label: '0.3.0', sha: 'after' }, result: { components: [newDirect, newAlias] } },
+    ];
+    const outputs = new Map<string, string | Buffer>();
+    const reports = createVersionReports({
+        config: { tmpDir: '.', analysisDir: 'analyses', reportsDir: 'reports', githubBaseUrl: 'https://example.org' },
+        logDebug: () => {}, hasGitDiff: async () => false,
+        collectJson: (target: typeof outputs, file: string, value: unknown) => target.set(path.resolve(file), JSON.stringify(value)),
+        createHistoryReader: () => ({ files: async (sha: string) => new Set(sha === 'before'
+            ? [oldSource, oldAlias.file] : [newSource, newAlias.file]), renames: async () => renames }),
+    });
+    await reports.generateReports('fixture', snapshots[0], snapshots[1], outputs, snapshots);
+    await reports.generateComponentComparisonReports('fixture', snapshots, outputs);
+    const json = JSON.parse([...outputs.entries()].find(([file]) => file.endsWith('.json'))![1].toString());
+    assert.equal(json.added.length, 0);
+    assert.equal(json.removed.length, 0);
+    assert.deepEqual(json.changed.map((item: {name: string}) => item.name), ['PersonnePhysiquePhoneType', 'Type']);
+    assert.ok(json.changed.every((item: {historyMatch: string}) => item.historyMatch === 'gitSourceRename'));
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(outputs.get(path.resolve('reports/fixture_component_comparison.xlsx')));
+    const sheet = workbook.worksheets[0];
+    assert.equal(sheet.rowCount, 3);
+    assert.equal(sheet.getCell('A2').value, 'PersonnePhysiquePhoneType');
+    assert.equal(sheet.getCell('A3').value, 'Type');
+    assert.match(sheet.getCell('H2').value, /^~\n/);
+    assert.match(sheet.getCell('H3').value, /^~\n/);
+});
+
 test('rapports : tri naturel visible, historique unique, liens nommés et repli indépendant sur les tags', async () => {
     const old = component('OldIcon', 'old/index.js', 'old/icon.svg');
     const renamed = component('NewIcon', 'new/index.js', 'new/icon.svg', 'changed');
@@ -84,7 +138,7 @@ test('rapports : tri naturel visible, historique unique, liens nommés et repli 
     assert.match(sheet.getCell('F5').value.hyperlink, /blob\/1.1.0\/new\/icon.svg/);
 });
 
-test('Git réel : renommage avec espaces, fichiers supprimés et liens Markdown/Excel', async () => {
+test('Git réel : source R100, ancien barrel supprimé, nouveau barrel ajouté et liens Markdown/Excel', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'repo-tools-history-'));
     const directory = path.join(root, 'fixture');
     fs.mkdirSync(directory);
@@ -99,23 +153,29 @@ test('Git réel : renommage avec espaces, fichiers supprimés et liens Markdown/
         fs.writeFileSync(path.join(root, 'empty.gitconfig'), '');
         git('init', '--initial-branch=develop');
         fs.writeFileSync(path.join(directory, 'old icon.svg'), '<svg><path d="M0 0"/></svg>');
-        fs.writeFileSync(path.join(directory, 'index.js'), "export { default as Old } from './old icon.svg';\n");
+        fs.writeFileSync(path.join(directory, 'old-index.js'), "// ancient barrel\n".repeat(20) + "export { default as Old } from './old icon.svg';\n");
         const first = commit('first');
         git('tag', '1.0.0');
         git('mv', 'old icon.svg', 'new icon.svg');
-        fs.writeFileSync(path.join(directory, 'index.js'), "export { default as New } from './new icon.svg';\n");
+        git('rm', 'old-index.js');
+        fs.writeFileSync(path.join(directory, 'new-index.js'), "// completely new exports\n".repeat(20) + "export { default as New } from './new icon.svg';\n");
         const second = commit('rename');
         git('tag', '1.1.0');
         git('rm', 'new icon.svg');
-        fs.writeFileSync(path.join(directory, 'index.js'), '// removed export\n');
+        fs.writeFileSync(path.join(directory, 'new-index.js'), '// removed export\n');
         const third = commit('remove');
         const reader = createGitHistoryReader(directory);
         assert.equal((await reader.renames(first, second)).get('old icon.svg'), 'new icon.svg');
+        assert.equal((await reader.renames(first, second)).has('old-index.js'), false);
+        const diff = git('diff', '--name-status', '--find-renames=50%', first, second);
+        assert.match(diff, /R100\s+old icon.svg\s+new icon.svg/);
+        assert.match(diff, /D\s+old-index.js/);
+        assert.match(diff, /A\s+new-index.js/);
         assert.ok((await reader.files(first)).has('old icon.svg'));
         assert.equal((await reader.files(third)).has('new icon.svg'), false);
         const snapshots = [
-            { reference: { kind: 'tag', label: '1.0.0', sha: first }, result: { components: [component('Old', 'index.js', 'old icon.svg')] } },
-            { reference: { kind: 'tag', label: '1.1.0', sha: second }, result: { components: [component('New', 'index.js', 'new icon.svg')] } },
+            { reference: { kind: 'tag', label: '1.0.0', sha: first }, result: { components: [component('Old', 'old-index.js', 'old icon.svg')] } },
+            { reference: { kind: 'tag', label: '1.1.0', sha: second }, result: { components: [component('New', 'new-index.js', 'new icon.svg')] } },
             { reference: { kind: 'develop', label: '1.2.0 (develop)', sha: third, branch: 'develop' }, result: { components: [] } },
         ];
         const outputs = new Map<string, string | Buffer>();
@@ -123,11 +183,18 @@ test('Git réel : renommage avec espaces, fichiers supprimés et liens Markdown/
             hasGitDiff: async () => false, logDebug: () => {},
             collectJson: (target: typeof outputs, file: string, value: unknown) => target.set(path.resolve(file), JSON.stringify(value)) });
         await reports.generateReports('fixture', snapshots[0], snapshots[1], outputs, snapshots);
+        const comparison = JSON.parse([...outputs.entries()].find(([file]) => file.endsWith('.json'))![1].toString());
+        assert.equal(comparison.added.length, 0);
+        assert.equal(comparison.removed.length, 0);
+        assert.equal(comparison.changed.length, 1);
+        assert.equal(comparison.changed[0].historyMatch, 'gitSourceRename');
+        assert.ok(comparison.changed[0].changeReasons.includes('exportMoved'));
+        assert.ok(comparison.changed[0].changeReasons.includes('sourceMoved'));
         await reports.generateComponentComparisonReports('fixture', snapshots, outputs);
         const markdown = outputs.get(path.join(root, 'fixture_component_comparison.md'))!.toString();
         assert.match(markdown, /gitSourceRename/);
         assert.match(markdown, /blob\/1.1.0\/new%20icon.svg/);
-        assert.match(markdown, /blob\/develop\/index.js/);
+        assert.match(markdown, /blob\/develop\/new-index.js/);
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(outputs.get(path.join(root, 'fixture_component_comparison.xlsx')));
         assert.equal(workbook.worksheets[0].rowCount, 2);
