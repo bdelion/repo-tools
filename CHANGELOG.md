@@ -27,6 +27,9 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
+- Historique conservé lors des migrations `.js`/`.jsx` vers `.ts`/`.tsx` au même
+  chemin sans extension et pour le même symbole source, même sans renommage Git.
+  Le rapport signale `typescriptMigration` et garde les changements de contenu visibles.
 - Suivi des sources déplacées exportées à la fois directement et via des barrels :
   les déplacements Git des exports et les noms inchangés départagent les historiques,
   sans fusionner les alias ni résoudre arbitrairement les véritables ambiguïtés.

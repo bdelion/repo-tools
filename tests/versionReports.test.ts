@@ -28,6 +28,70 @@ test('historique : symbole source, déplacement Git, contenu unique et ambiguït
     assert.equal(matchComponents([old], [component('Old', 'new.js', 'source.svg', 'hash', 'otherSymbol')], new Map([['old/index.js', 'new.js']])).size, 0);
 });
 
+test('migration JS vers TS : même chemin et symbole, sans rapprochement des ambiguïtés', () => {
+    for (const before of ['js', 'jsx']) {
+        for (const after of ['ts', 'tsx']) {
+            const old = component('Button', `src/Button.${before}`, `src/Button.${before}`, 'old');
+            const next = component('Button', `src/Button.${after}`, `src/Button.${after}`, 'new');
+            assert.equal(matchComponents([old], [next], new Map()).get(old.id), next.id);
+        }
+    }
+    const old = component('Button', 'src/Button.jsx', 'src/Button.jsx', 'old');
+    const next = component('Button', 'src/Button.tsx', 'src/Button.tsx', 'new');
+    assert.equal(matchComponents([old], [next, component('Button', 'src/Button.ts', 'src/Button.ts', 'new')], new Map()).size, 0);
+    assert.equal(matchComponents([old, component('Button', 'src/Button.js', 'src/Button.js', 'old')], [next], new Map()).size, 0);
+    assert.equal(matchComponents([old], [component('Button', 'other/Button.tsx', 'other/Button.tsx', 'new')], new Map()).size, 0);
+    assert.equal(matchComponents([old], [component('Button', next.file, next.sourcefile, 'new', 'Other')], new Map()).size, 0);
+    assert.equal(matchComponents([old], [{ ...next, sourceExport: undefined }], new Map()).size, 0);
+    assert.equal(matchComponents([next], [old], new Map()).size, 0);
+    const windows = { ...old, sourcefile: 'src\\Button.jsx', file: 'src\\Button.jsx' };
+    assert.equal(matchComponents([windows], [next], new Map()).get(old.id), next.id);
+});
+
+test('migration JS vers TS : une ligne par export dans JSON, Markdown et Excel malgré un contenu différent', async () => {
+    const oldDirect = component('Button', 'src/Button.jsx', 'src/Button.jsx', 'javascript');
+    const newDirect = component('Button', 'src/Button.tsx', 'src/Button.tsx', 'typescript');
+    const oldAlias = component('PublicButton', 'src/index.js', oldDirect.file, 'javascript');
+    const newAlias = component('PublicButton', 'src/index.ts', newDirect.file, 'typescript');
+    const stableAlias = component('StableButton', 'src/stable.js', oldDirect.file, 'javascript');
+    const migratedAlias = { ...stableAlias, sourcefile: newDirect.file, contentHash: 'typescript' };
+    const snapshots = [
+        { reference: { kind: 'tag', label: '1.0.0', sha: 'before' }, result: { components: [oldDirect, oldAlias, stableAlias] } },
+        { reference: { kind: 'tag', label: '2.0.0', sha: 'after' }, result: { components: [newDirect, newAlias, migratedAlias] } },
+    ];
+    const outputs = new Map<string, string | Buffer>();
+    const reports = createVersionReports({
+        config: { tmpDir: '.', analysisDir: 'analyses', reportsDir: 'reports', githubBaseUrl: 'https://example.org' },
+        logDebug: () => {}, hasGitDiff: async () => false,
+        collectJson: (target: typeof outputs, file: string, value: unknown) => target.set(path.resolve(file), JSON.stringify(value)),
+        createHistoryReader: () => ({ files: async (sha: string) => new Set(snapshots[sha === 'before' ? 0 : 1].result.components
+            .flatMap(item => [item.file, item.sourcefile])), renames: async () => new Map() }),
+    });
+    await reports.generateReports('fixture', snapshots[0], snapshots[1], outputs, snapshots);
+    await reports.generateComponentComparisonReports('fixture', snapshots, outputs);
+    const json = JSON.parse([...outputs.entries()].find(([file]) => file.endsWith('.json'))![1].toString());
+    assert.equal(json.added.length, 0);
+    assert.equal(json.removed.length, 0);
+    assert.equal(json.changed.length, 3);
+    for (const changed of json.changed) {
+        assert.ok(changed.changeReasons.includes('typescriptMigration'));
+        assert.ok(changed.changeReasons.includes('diffContentHash'));
+        assert.ok(changed.changeReasons.includes('sourceMoved'));
+    }
+    assert.equal(json.changed[0].historyMatch, 'typescriptMigration');
+    assert.equal(json.changed[0].previous.sourcefile, oldDirect.file);
+    const markdown = outputs.get(path.resolve('reports/fixture_component_comparison.md'))!.toString();
+    assert.match(markdown, /typescriptMigration/);
+    assert.equal((markdown.match(/\|Button\|/g) ?? []).length, 1);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(outputs.get(path.resolve('reports/fixture_component_comparison.xlsx')));
+    const sheet = workbook.worksheets[0];
+    assert.equal(sheet.rowCount, 4);
+    assert.equal(sheet.getCell('A2').value, 'Button');
+    assert.match(sheet.getCell('H2').value, /^~\n.*typescriptMigration/s);
+    assert.match(sheet.getCell('F2').value.hyperlink, /blob\/2.0.0\/src\/Button.tsx/);
+});
+
 test('une source R100 exportée directement et par un barrel conserve les deux historiques', async () => {
     const oldSource = 'src/utils/phones/type.js';
     const newSource = 'src/contacts/phones/type.js';

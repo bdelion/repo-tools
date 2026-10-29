@@ -2,7 +2,7 @@ const path = require('node:path');
 const ExcelJS = require('exceljs');
 const { comparisonFileName } = require('../versionReferences.cjs');
 const { createGitHistoryReader } = require('./gitHistory.cjs');
-const { componentKey, normalizePath, compareComponents, buildComponentHistory } = require('./componentHistory.cjs');
+const { componentKey, normalizePath, compareComponents, buildComponentHistory, isTypescriptPathMigration } = require('./componentHistory.cjs');
 
 function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, createHistoryReader = createGitHistoryReader }) {
   const contexts = new WeakMap();
@@ -89,6 +89,9 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
       if (before.name !== current.name) reasons.push('nameChanged');
       if (normalizePath(before.file) !== normalizePath(current.file)) reasons.push('exportMoved');
       if (normalizePath(before.sourcefile) !== normalizePath(current.sourcefile)) reasons.push('sourceMoved');
+      const typescriptMigration = before.sourceExport && before.sourceExport === current.sourceExport &&
+        (isTypescriptPathMigration(before.sourcefile, current.sourcefile) || isTypescriptPathMigration(before.file, current.file));
+      if (typescriptMigration) reasons.push('typescriptMigration');
       if (before.contentHash && current.contentHash && before.contentHash !== current.contentHash) reasons.push('diffContentHash');
       if (before.sourceAST && current.sourceAST && before.sourceAST !== current.sourceAST) reasons.push('diffAST');
       if (before.sourcefile && normalizePath(before.sourcefile) === normalizePath(current.sourcefile) &&
@@ -99,6 +102,7 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
         const renamedSource = ctx.renames[index - 1]?.get(normalizePath(before.sourcefile)) === normalizePath(current.sourcefile);
         const historyMatch = componentKey(before) === componentKey(current) ? 'sameIdentity'
           : renamedSource ? 'gitSourceRename'
+          : typescriptMigration ? 'typescriptMigration'
           : normalizePath(before.sourcefile) === normalizePath(current.sourcefile) && before.sourceExport && before.sourceExport === current.sourceExport
             ? 'sameSourceSymbol'
             : ctx.renames[index - 1]?.get(normalizePath(before.file)) === normalizePath(current.file) && before.name === current.name

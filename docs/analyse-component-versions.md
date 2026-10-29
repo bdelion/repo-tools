@@ -125,6 +125,10 @@ de noms ou un AST identique seul ne suffit pas. Les cas ambigus restent ajoutés
 Les comparaisons JSON et Markdown exposent `previous`, `changeReasons` et
 `historyMatch` pour les composants modifiés ; la matrice conserve les anciens noms
 et le motif du rapprochement. Les identifiants bruts des analyses restent inchangés.
+Les migrations `.js`/`.jsx` vers `.ts`/`.tsx` conservent également une seule ligne
+si le chemin sans extension et le symbole source sont identiques et la correspondance
+unique, même sans renommage détecté par Git. Le motif `typescriptMigration` est ajouté
+aux changements de chemins et de contenu ; les cas ambigus restent séparés.
 
 Après une analyse réussie, les fichiers d’analyse et de comparaison devenus
 obsolètes sont supprimés pour le seul dépôt concerné, puis les comparaisons

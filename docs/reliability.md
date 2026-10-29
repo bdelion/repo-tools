@@ -40,6 +40,13 @@ Si plusieurs exports désignent la même source, le déplacement Git du fichier
 d’export puis le nom exporté inchangé servent à départager les correspondances
 déjà établies sur la source. Les exports directs et leurs alias gardent des lignes
 distinctes ; plusieurs alias renommés sans indice supplémentaire restent ambigus.
+Une migration `.js`/`.jsx` vers `.ts`/`.tsx` est également reconnue lorsque le
+chemin sans extension et le symbole source restent identiques, avec une correspondance
+unique dans les deux sens. Cette règle ne dépend ni d’un contenu identique ni d’un
+renommage Git. Les variantes ambiguës (`Button.ts` et `Button.tsx`), les symboles
+différents et les déplacements vers un autre répertoire ne sont pas rapprochés
+par cette seule règle. `typescriptMigration` apparaît dans les motifs de modification ;
+les différences de contenu restent signalées et les exports directs/alias restent distincts.
 Les liens utilisent la référence nommée de plus haute version analysée si le fichier
 y existe encore, sinon le dernier tag analysé où il existe (ou, sans tag, la dernière
 candidate connue). Cette vérification utilise les arbres Git et s’applique séparément

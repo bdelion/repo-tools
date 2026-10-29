@@ -1,5 +1,10 @@
 const normalizePath = value => value ? String(value).replace(/\\/g, '/') : '';
 const componentKey = component => component.id ?? `${normalizePath(component.file)}#${component.name}`;
+const isTypescriptPathMigration = (before, after) => {
+  const source = normalizePath(before), target = normalizePath(after);
+  return /\.jsx?$/.test(source) && /\.tsx?$/.test(target) &&
+    source.replace(/\.jsx?$/, '') === target.replace(/\.tsx?$/, '');
+};
 const collator = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
 const compareText = (a, b) => collator.compare(a, b) || (a < b ? -1 : a > b ? 1 : 0);
 const compareComponents = (a, b) => compareText(a.name ?? '', b.name ?? '') || compareText(componentKey(a), componentKey(b));
@@ -20,6 +25,7 @@ function matchComponents(previous, current, renames) {
     if (a.sourceExport && b.sourceExport && !sameSymbol) return 0;
     let evidence = 0;
     if (sourceA && sourceB && renames.get(sourceA) === sourceB) evidence = 80;
+    else if (sameSymbol && isTypescriptPathMigration(sourceA, sourceB)) evidence = 75;
     else if (sourceA && sourceA === sourceB && sameSymbol) evidence = 60;
     else if (fileA && renames.get(fileA) === fileB && a.name === b.name) evidence = 70;
     else if (a.contentHash && a.contentHash === b.contentHash) evidence = 40;
@@ -29,7 +35,7 @@ function matchComponents(previous, current, renames) {
     // Le déplacement du fichier d'export ancre l'export direct ; un nom inchangé
     // départage les alias. Un nom seul ou un hash commun ambigu ne suffit jamais.
     const anchoredSource = evidence >= 60;
-    const exportRename = fileA && renames.get(fileA) === fileB;
+    const exportRename = fileA && (renames.get(fileA) === fileB || isTypescriptPathMigration(fileA, fileB));
     return evidence + (anchoredSource && exportRename ? 8 : 0) + (anchoredSource && a.name === b.name ? 4 : 0);
   };
   // Accepter seulement un meilleur rapprochement unique dans les deux sens.
@@ -94,4 +100,4 @@ function buildComponentHistory(snapshots, renameMaps) {
   return { rows, assignments, maps };
 }
 
-module.exports = { normalizePath, componentKey, compareComponents, buildComponentHistory, matchComponents };
+module.exports = { normalizePath, componentKey, compareComponents, buildComponentHistory, matchComponents, isTypescriptPathMigration };
