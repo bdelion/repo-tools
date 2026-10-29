@@ -65,6 +65,10 @@ Exemple de résultats sur `repo-react-enterprise` :
 
 ## 📂 Sorties
 
+Les fichiers source sont désormais résolus par chemin/AST, les exports homonymes
+restent distincts et les caches sont invalidés par un fingerprint de l’analyseur
+et de sa configuration. Voir [le détail des garanties et de la migration](reliability.md).
+
 ### Versions en préparation : develop, release et hotfix
 
 À chaque exécution, les branches d’`origin` sont actualisées avec `fetch --all --prune`.

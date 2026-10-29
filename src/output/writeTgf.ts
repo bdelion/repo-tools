@@ -10,6 +10,7 @@
  */
 
 import * as fs from 'fs';
+import path from 'node:path';
 import { NodeMap, DependencyMap } from '../types/types';
 
 export function writeTgfFile(nodes: NodeMap, dependencies: DependencyMap, outputFile: string): void {
@@ -34,5 +35,6 @@ export function writeTgfFile(nodes: NodeMap, dependencies: DependencyMap, output
         });
     });
 
+    fs.mkdirSync(path.dirname(outputFile), { recursive: true });
     fs.writeFileSync(outputFile, fileContent, 'utf-8');
 }

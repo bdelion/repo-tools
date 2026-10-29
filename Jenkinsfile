@@ -6,11 +6,12 @@ forgePipeline {
   Actions.addPostInitAction {
       if (Project.isProjectType(ProjectTypes.NODE)) {
           Stage nodeBuildStage = Pipeline.findFirstStage(StageTags.NODE, StageTags.BUILD)
-          Stage nodeLintStage = new Stage(name: 'Lint (Node)', tags: [StageTags.TEST, 'LINT'], action:
+          Stage nodeLintStage = new Stage(name: 'Validate (Node)', tags: [StageTags.TEST, 'LINT'], action:
                   {
                       withEnv(['CI=true']) {
                           script {
-                              Node.execute('run lint')
+                              Node.execute('ci --ignore-scripts')
+                              Node.execute('run check')
                           }
                       }
                   }

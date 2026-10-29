@@ -56,6 +56,22 @@ test('cycle Git complet : develop, release, hotfix, nouveaux commits, suppressio
         ]);
         const obsolete = 'fixture_1.8.0__develop_.json';
         assert.ok(fs.existsSync(path.join(analyses, obsolete)));
+        const diffFailurePreload = path.join(root, 'fail-diff.cjs');
+        fs.writeFileSync(diffFailurePreload, [
+            `const location = require.resolve(${JSON.stringify(path.resolve(__dirname, '../node_modules/simple-git'))});`,
+            'const original = require(location);',
+            'require.cache[location].exports = { ...original, simpleGit: (...args) => {',
+            '  const git = original.simpleGit(...args);',
+            '  git.diff = async () => { throw new Error("Injected Git diff failure"); };',
+            '  return git;',
+            '} };',
+        ].join('\n'));
+        const summaryBeforeDiff = fs.readFileSync(path.join(reports, 'fixture_summary.json'));
+        fs.writeFileSync(path.join(analyses, 'git_diff_cache.json'), '{}');
+        const diffFailure = run(diffFailurePreload);
+        assert.equal(diffFailure.status, 1, diffFailure.stderr);
+        assert.match(diffFailure.stderr, /Injected Git diff failure/);
+        assert.deepEqual(fs.readFileSync(path.join(reports, 'fixture_summary.json')), summaryBeforeDiff);
         // Ancien format des comparaisons, et fichiers tiers à préserver.
         fs.writeFileSync(path.join(analyses, 'fixture_1.0.0_to_1.8.0 (develop)_rapport.md'), 'old');
         fs.writeFileSync(path.join(analyses, 'other_1.8.0__develop_.json'), 'keep');
@@ -109,7 +125,7 @@ test('cycle Git complet : develop, release, hotfix, nouveaux commits, suppressio
         assert.ok(markdown.includes('/blob/'));
         assert.equal(markdown.includes('/blob/1.9.0 (develop)/'), false);
         const index = JSON.parse(fs.readFileSync(path.join(analyses, 'sha_index.json'), 'utf8'));
-        assert.equal(Object.keys(index).some(key => key.endsWith(before.sha)), false);
+        assert.equal(Object.keys(index).some(key => key.includes(`_${before.sha}_`)), false);
 
         git('switch', 'main');
         git('branch', '-D', 'release/1.8.0', 'hotfix/1.0.1');
@@ -143,6 +159,16 @@ test('cycle Git complet : develop, release, hotfix, nouveaux commits, suppressio
         fs.writeFileSync(path.join(root, 'config.json'), JSON.stringify(config));
         tags = success();
         assert.deepEqual(tags.map((item: {tag: string}) => item.tag), ['2.0.1 (hotfix candidate)']);
+        const candidateFile = path.join(analyses, 'fixture_2.0.1__hotfix_candidate_.json');
+        const candidateBefore = JSON.parse(fs.readFileSync(candidateFile, 'utf8'));
+        assert.ok(candidateBefore.components.length > 0);
+        config.excludeFilePatterns = ['index'];
+        fs.writeFileSync(path.join(root, 'config.json'), JSON.stringify(config));
+        tags = success();
+        const candidateAfter = JSON.parse(fs.readFileSync(candidateFile, 'utf8'));
+        assert.equal(candidateBefore.sha, candidateAfter.sha);
+        assert.notEqual(candidateBefore.fingerprint, candidateAfter.fingerprint);
+        assert.equal(candidateAfter.components.length, 0);
     } finally {
         // Seul le répertoire temporaire créé par ce test peut être supprimé.
         const temporaryBase = path.resolve(os.tmpdir()) + path.sep;

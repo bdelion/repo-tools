@@ -4,6 +4,7 @@ import fs from 'fs-extra';
 import { TgfParser } from './parsers/TgfParser';
 import { Graph } from './model/Graph';
 import { GraphQueries } from './queries/GraphQueries';
+import { analyzeTopology } from './topology';
 
 import { DEFAULT_EXCLUDE_PATTERNS } from './constants';
 
@@ -37,6 +38,7 @@ export interface AnalysisReport {
   maxLevel: number;
   orphanCount: number;
   cycleCount: number;
+  cycleGroups: string[][];
   mostUsed: [string, number][];
 }
 
@@ -61,11 +63,9 @@ export function analyzeGraph(
 
   const content = fs.readFileSync(file, 'utf8');
 
-  const graph: Graph =
+  let graph: Graph =
     new TgfParser().parse(content);
 
-  const queries =
-    new GraphQueries(graph);
 
   const patterns = [
     ...DEFAULT_EXCLUDE_PATTERNS,
@@ -76,7 +76,7 @@ export function analyzeGraph(
     node: string,
   ): boolean =>
     patterns.some(pattern =>
-      pattern.test(node),
+      pattern.test(graph.getLabel(node)),
     );
 
   const nodes = graph
@@ -93,96 +93,11 @@ export function analyzeGraph(
   // DETECTION DES CYCLES
   //
 
-  const cycles: string[][] = [];
-
-  const visited = new Set<string>();
-  const visiting = new Set<string>();
-
-  const detectCycles = (
-    node: string,
-    path: string[] = [],
-  ): void => {
-    if (visiting.has(node)) {
-      cycles.push([
-        ...path,
-        node,
-      ]);
-
-      return;
-    }
-
-    if (visited.has(node)) {
-      return;
-    }
-
-    visiting.add(node);
-
-    queries
-      .getDirectDependencies(node)
-      .forEach(dependency =>
-        detectCycles(
-          dependency,
-          [...path, node],
-        ),
-      );
-
-    visiting.delete(node);
-    visited.add(node);
-  };
-
-  nodes.forEach(node =>
-    detectCycles(node),
-  );
-
-  //
-  // CALCUL DES NIVEAUX
-  //
-
-  const levelCache = new Map<
-    string,
-    number
-  >();
-
-  const computeLevel = (
-    node: string,
-    stack = new Set<string>(),
-  ): number => {
-    if (levelCache.has(node)) {
-      return levelCache.get(node)!;
-    }
-
-    if (stack.has(node)) {
-      return 0;
-    }
-
-    stack.add(node);
-
-    const dependencies =
-      queries.getDirectDependencies(
-        node,
-      );
-
-    const level =
-      dependencies.length === 0
-        ? 0
-        : Math.max(
-          ...dependencies.map(
-            dependency =>
-              computeLevel(
-                dependency,
-                new Set(stack),
-              ),
-          ),
-        ) + 1;
-
-    levelCache.set(node, level);
-
-    return level;
-  };
-
-  //
-  // DESCRIPTION DES COMPOSANTS
-  //
+  graph = graph.subgraph(nodes);
+  const queries = new GraphQueries(graph);
+  const topology = analyzeTopology(graph);
+  const cycles = topology.cyclicGroups;
+  const computeLevel = (node: string): number => topology.levels.get(node) ?? 0;
 
   const components: Record<
     string,
@@ -191,7 +106,7 @@ export function analyzeGraph(
 
   nodes.forEach(node => {
     const metadata =
-      splitNodeLabel(node);
+      splitNodeLabel(graph.getLabel(node));
 
     const dependencies =
       queries.getDirectDependencies(
@@ -204,7 +119,7 @@ export function analyzeGraph(
       );
 
     components[node] = {
-      fullName: metadata.fullName,
+      fullName: node,
       name: metadata.name,
       path: metadata.path,
 
@@ -293,6 +208,7 @@ export function analyzeGraph(
 
     cycleCount:
       cycles.length,
+    cycleGroups: cycles,
 
     mostUsed,
   };

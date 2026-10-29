@@ -31,6 +31,8 @@ export class RequiredComponentsReportWriter {
             `| Transitive dependencies | ${report.transitiveDependencies.length} |`,
             `| Shared dependencies | ${report.sharedDependencies.length} |`,
             `| Max depth | ${report.maxDepth} |`,
+            `| Cyclic groups | ${report.cyclicGroups.length} |`,
+            `| Dependency tree truncated | ${report.dependencyTreeTruncated} |`,
             `| Complexity score | ${report.complexityScore} |`,
             '',
             '## Component Metrics',
@@ -79,6 +81,10 @@ export class RequiredComponentsReportWriter {
             '```text',
             report.dependencyTreeText,
             '```',
+            '',
+            '## Cyclic Groups (migrate together)',
+            '',
+            ...report.cyclicGroups.map(group => `- ${group.join(', ')}`),
             '',
         ].join('\n');
 

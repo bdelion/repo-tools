@@ -8,7 +8,7 @@
  */
 export type Node = {
     visibleName: string; // Nom visible du composant (annotation @visibleName)
-    icone: any;          // Icône associée (extrait de @visibleName)
+    icone: string;          // Icône associée (extrait de @visibleName)
     fileName: string;    // Chemin relatif du fichier source
 };
 

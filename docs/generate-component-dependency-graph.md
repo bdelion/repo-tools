@@ -32,6 +32,10 @@
 
 Dans le fichier TGF, les nœuds sont triés par identifiant et les liens par source, puis par cible, dans l’ordre alphanumérique naturel (`Component2` avant `Component10`).
 
+L’identité d’un composant repose désormais sur son chemin et son export ; les
+imports sont résolus via AST et configuration TypeScript. Régénérer le TGF et ses
+métadonnées après migration. Voir [identifiants, résolution et limites](reliability.md).
+
 ### Graphe statique (image ou DOT)
 
 ```bash

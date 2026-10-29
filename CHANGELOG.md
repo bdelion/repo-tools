@@ -7,6 +7,8 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 ## [Unreleased]
 ### Added
 
+- Lockfile et chaîne `typecheck → lint → test` en CI ; correction des dépendances
+  critiques et suppression de dagre-d3 inutilisé.
 - Analyse des branches `release/<version>` et `hotfix/<version>` avec validation
   de `package.json`, tri SemVer et priorité tag > release > hotfix > develop (#2).
 - Sélection de tous les composants avec `graph:required-by-name --all` ou d’une liste texte UTF-8 avec `--components-file <chemin>`.
@@ -15,12 +17,18 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Changed
 
+- Résolution AST/TypeScript partagée, identifiants par chemin/export et séparation
+  des rapports de versions ; invalidation du cache par configuration et analyseur.
+- Niveaux sur les composantes fortement connexes, cycles explicites, fermetures
+  transitives itératives et arbres de détail bornés.
 - Transmission de snapshots de version unifiés aux comparaisons et rapports,
   sans tables parallèles de libellés, résultats et références Git.
 - xxx
 
 ### Fixed
 
+- Les erreurs de résolution locale, parsing et diff Git interrompent le dépôt
+  concerné ; les exports homonymes et labels TGF identiques restent distincts.
 - Préparation de toutes les sorties avant publication et restauration des fichiers
   et caches précédents en cas d’échec intercepté ; purge des sorties obsolètes
   différée jusqu’à la publication.
