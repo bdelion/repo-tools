@@ -13,6 +13,7 @@
 - Analyse des composants dans les fichiers source
 - Support multi-dépôts Git (`repo-react`, `enterprise-assets`, etc.)
 - Scan par tag (tags SemVer stables, hors `-SNAPSHOT`, `-rc.*`, `-hc.*`, etc.)
+- Analyse des branches distantes `develop`, `release/<version>` et `hotfix/<version>`.
 - Analyse AST via Babel
 - Extraction des exports et de **métadonnées** (ex. `@visibleName`, usage de `forwardRef`, `memo`, etc.)
 - Détection des changements par **hash contenu**, **diff AST** et **diff GIT**
@@ -63,6 +64,58 @@ Exemple de résultats sur `repo-react-enterprise` :
 ```
 
 ## 📂 Sorties
+
+### Versions en préparation : develop, release et hotfix
+
+À chaque exécution, les branches d’`origin` sont actualisées avec `fetch --all --prune`.
+Les références sont triées par version **SemVer**, et non par nom ou par date :
+`1.9.0` précède `1.10.0`. Les bornes `tagMin` et `tagMax` s’appliquent aussi aux branches.
+
+| Source | Libellé dans les rapports |
+|---|---|
+| Tag `1.8.0` | `1.8.0` |
+| Branche `develop`, package.json `1.9.0` | `1.9.0 (develop)` |
+| Branche `release/1.8.0` | `1.8.0 (release candidate)` |
+| Branche `hotfix/1.7.1` | `1.7.1 (hotfix candidate)` |
+
+Une seule référence est conservée pour une même version, avec cette priorité :
+**tag publié > release > hotfix > develop**. Une branche release remplace donc
+develop pour la même version ; un tag remplace ensuite les candidats correspondants.
+Un dépôt sans tag ou sans develop peut être analysé s’il possède une branche candidate.
+
+Pour release et hotfix, la version du nom de branche doit être une version SemVer
+valide et être **strictement identique** à `package.json.version` du commit analysé.
+Par exemple, `release/1.8.0` avec un package `1.8.0-rc.1` est une erreur.
+Develop doit également déclarer une version SemVer valide. Toutes les branches
+release/hotfix découvertes sont validées, même si leur version est hors bornes
+ou masquée par un tag. Une incohérence arrête l’analyse de ce dépôt, avant toute
+modification de ses rapports ; les autres dépôts sont traités et la commande se
+termine avec un code d’erreur.
+
+Les analyses JSON contiennent `version`, `kind`, `branch` et `sha`. Les liens des
+rapports pointent vers le SHA du commit ; les comparaisons utilisent aussi les SHA
+afin qu’un nouveau commit sur une branche ne réutilise pas un ancien diff.
+
+Après une analyse réussie, les fichiers d’analyse et de comparaison devenus
+obsolètes sont supprimés pour le seul dépôt concerné, puis les comparaisons
+consécutives et rapports globaux sont régénérés. Cela couvre les changements de
+version, les transitions develop → release → tag et la suppression des branches
+release/hotfix distantes. Les clés de cache obsolètes sont également retirées.
+Les fichiers d’autres dépôts et les fichiers non reconnus comme sorties de cet
+analyseur sont conservés. Les répertoires configurés restent des répertoires de
+sortie : les anciennes versions exclues par les bornes peuvent être nettoyées.
+
+Les noms de fichiers normalisent les caractères spéciaux en `_`, par exemple :
+
+```text
+analyses/repo-react_1.8.0__release_candidate_.json
+analyses/repo-react_1.7.1_to_1.8.0__release_candidate__rapport.md
+```
+
+Les libellés lisibles dans les contenus restent inchangés. Les anciennes
+comparaisons avec espaces et parenthèses dans leur nom sont nettoyées lors de la
+régénération. La suppression de tags distants n’est pas répercutée automatiquement
+sur les tags locaux ; cette évolution concerne le cycle de vie des branches.
 
 Les résultats d'analyses sont enregistrés dans le dossier `analyses` :
 - `./analyses/[repo]_[tag].json` : analyse par version, contient les infos sur les composants de la version ainsi que :

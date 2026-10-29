@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
 
 // ==========================
 // Analyse & Comparaison d'exports multi-tags pour libs UI
@@ -32,8 +31,12 @@ const fs = require('fs-extra');
 const path = require('path');
 const semverSort = require('semver/functions/sort');
 const ExcelJS = require('exceljs');
-const crypto = require('crypto');
+const nodeCrypto = require('node:crypto');
 const babelParser = require('@babel/parser');
+const {
+  branchReference, inVersionRange, selectReferences, analysisFileName,
+  comparisonFileName, isGeneratedAnalysisFile,
+} = require('./versionReferences.cjs');
 
 // --------------------------
 // CLI & Config
@@ -145,23 +148,7 @@ function isPrereleaseTag(tag) {
 }
 
 function inTagRange(tag) {
-  if (!CFG.tagMin && !CFG.tagMax) return true;
-  const parts = tag.split('.').map(Number);
-  function cmp(a, b) {
-    for (let i = 0; i < 3; i++) {
-      if (a[i] !== b[i]) return a[i] - b[i];
-    }
-    return 0;
-  }
-  if (CFG.tagMin) {
-    const min = CFG.tagMin.split('.').map(Number);
-    if (cmp(parts, min) < 0) return false;
-  }
-  if (CFG.tagMax) {
-    const max = CFG.tagMax.split('.').map(Number);
-    if (cmp(parts, max) > 0) return false;
-  }
-  return true;
+  return inVersionRange(tag, CFG.tagMin, CFG.tagMax);
 }
 
 function filterAndSortTags(tags) {
@@ -171,8 +158,8 @@ function filterAndSortTags(tags) {
   return semverSort(clean);
 }
 
-function githubLink(repoName, tag, filePath) {
-  return `${CFG.githubBaseUrl}/${repoName}/blob/${tag}/${String(filePath).replace(/\\/g, '/')}`;
+function githubLink(repoName, ref, filePath) {
+  return `${CFG.githubBaseUrl}/${repoName}/blob/${encodeURIComponent(ref)}/${String(filePath).replace(/\\/g, '/')}`;
 }
 
 // Helper lien Markdown sûr
@@ -340,7 +327,7 @@ async function prepareRepo(repo) {
   } else {
     console.log(`\t🔄 Mise à jour de ${repo.name}...`);
     const repoGit = simpleGit(repoPath);
-    await repoGit.fetch(['--all']);
+    await repoGit.fetch(['--all', '--prune']);
     await repoGit.reset(['--hard', 'origin/HEAD']);
   }
   return repoPath;
@@ -353,7 +340,7 @@ async function prepareRepo(repo) {
  */
 async function getTagDate(repoPath, tag, prefer = 'commit') {
   const git = simpleGit(repoPath);
-  const isIsoStrict = (s) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?[+\-]\d{2}:\d{2}$/.test(s?.trim());
+  const isIsoStrict = (s) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?[+-]\d{2}:\d{2}$/.test(s?.trim());
 
   const tryCommitDate = async () => {
     const out = await git.raw(['show', '-s', '--format=%cI', `${tag}^{}`]);
@@ -462,42 +449,26 @@ async function getValidSourceFiles(srcPath) {
     .map((abs) => path.relative(srcPath, abs)); // relatif à src
 }
 
-/**
- * Analyse la branche develop et renvoie
- * un résultat compatible avec un tag.
- *
- * Le nom affiché est :
- *
- *   x.y.z (develop)
- *
- * où x.y.z provient du package.json.
- */
-async function analyzeDevelop(repo, repoPath) {
+/** Découvre et valide toutes les branches candidates avant de modifier les sorties. */
+async function discoverReferences(repoPath) {
   const git = simpleGit(repoPath);
-  const gitRef = 'origin/develop';
-  
-  await git.checkout('origin/develop');
-
-  const sha = (await git.revparse([gitRef])).trim();
-  
-  console.log('[DEBUG package]', path.join(repoPath, 'package.json'));
-
-  const packageJson = await fs.readJson(path.join(repoPath,'package.json'));
-
-  console.log('[DEBUG version]',packageJson.version);
-
-  const version = packageJson.version;
-  const displayName = `${version} (develop)`;
-  const result = await analyzeTag(repo, repoPath, gitRef, displayName, sha);
-
-  result.branch = 'develop';
-  result.version = version;
-  result.isDevelop = true;
-
-  return result;
+  const references = [];
+  for (const tag of filterAndSortTags((await git.tags()).all)) {
+    const sha = (await git.revparse([`${tag}^{commit}`])).trim();
+    references.push({ kind: 'tag', version: tag, label: tag, sha });
+  }
+  const remoteRefs = await git.raw(['for-each-ref', '--format=%(refname:strip=3)', 'refs/remotes/origin/']);
+  for (const branch of remoteRefs.trim().split('\n').map(value => value.trim())) {
+    if (branch !== 'develop' && !/^(release|hotfix)\//.test(branch)) continue;
+    const sha = (await git.revparse([`refs/remotes/origin/${branch}^{commit}`])).trim();
+    const packageJson = JSON.parse(await git.show([`${sha}:package.json`]));
+    const reference = branchReference(branch, packageJson.version, sha);
+    if (inTagRange(reference.version)) references.push(reference);
+  }
+  return selectReferences(references);
 }
 
-async function analyzeTag(repo, repoPath, gitRef, displayName, tagSha) {
+async function analyzeTag(repo, repoPath, gitRef, displayName, tagSha, reference) {
   const git = simpleGit(repoPath);
   await git.checkout(gitRef);
 
@@ -548,7 +519,7 @@ async function analyzeTag(repo, repoPath, gitRef, displayName, tagSha) {
         try {
           const srcContent = await fs.readFile(sourceAbs, 'utf8');
           if (sIsCode) {
-            contentHash = crypto.createHash('sha256').update(srcContent).digest('hex');
+            contentHash = nodeCrypto.createHash('sha256').update(srcContent).digest('hex');
             try {
               const rawAST = babelParser.parse(srcContent, { sourceType: 'module', plugins: ['jsx', 'typescript'] });
               sourceAST = JSON.stringify(cleanAST(rawAST.program.body));
@@ -593,20 +564,21 @@ async function analyzeTag(repo, repoPath, gitRef, displayName, tagSha) {
   );
 
   // Date du tag (ici on préfère la date du tag annoté)
-  const commitDate = await getTagDate(repoPath, gitRef, 'tag');
+  const commitDate = await getTagDate(repoPath, reference.kind === 'tag' ? displayName : tagSha, 'tag');
 
   const result = {
     repo: repo.name,
     sha: tagSha,
     tag: displayName,
+    version: reference.version,
+    kind: reference.kind,
+    branch: reference.branch ?? null,
+    isDevelop: reference.kind === 'develop',
     dateTag: commitDate,
     date: new Date().toISOString(),
     components: filtered
   };
 
-  const safeTag = String(displayName).replace(/[^\w.-]/g, '_');
-  const outputFile = path.join(CFG.analysisDir, `${repo.name}_${safeTag}.json`);
-  await fs.writeJson(outputFile, result, { spaces: 2 });
   return result;
 }
 
@@ -767,7 +739,7 @@ async function generateReports(repoName, tag1, tag2, result1, result2, gitRefs) 
     unchanged: sortByName(comparison.unchanged.map((n) => comparison.nextMap.get(n)))
   };
 
-  const jsonPath = path.join(CFG.analysisDir, `${repoName}_${tag1}_to_${tag2}_rapport.json`);
+  const jsonPath = path.join(CFG.analysisDir, comparisonFileName(repoName, tag1, tag2, 'json'));
   await fs.writeJson(jsonPath, jsonReport, { spaces: 2 });
 
   const md = `
@@ -777,20 +749,20 @@ async function generateReports(repoName, tag1, tag2, result1, result2, gitRefs) 
 **À** : ${tag2}
 
 ## ✅ Nouveaux composants
-${generateMarkdownTable(jsonReport.added, repoName, tag1, tag2, 'added') || '_Aucun_'}
+${generateMarkdownTable(jsonReport.added, repoName, gitRefs[tag1], gitRefs[tag2], 'added') || '_Aucun_'}
 
 ## ❌ Composants supprimés
-${generateMarkdownTable(jsonReport.removed, repoName, tag1, tag2, 'removed') || '_Aucun_'}
+${generateMarkdownTable(jsonReport.removed, repoName, gitRefs[tag1], gitRefs[tag2], 'removed') || '_Aucun_'}
 
 ## 🔄 Composants modifiés
-${generateMarkdownTable(jsonReport.changed, repoName, tag1, tag2, 'changed') || '_Aucun_'}
+${generateMarkdownTable(jsonReport.changed, repoName, gitRefs[tag1], gitRefs[tag2], 'changed') || '_Aucun_'}
 
 ## 🔁 Composants inchangés
-${generateMarkdownTable(jsonReport.unchanged, repoName, tag1, tag2, 'unchanged') || '_Aucun_'}
+${generateMarkdownTable(jsonReport.unchanged, repoName, gitRefs[tag1], gitRefs[tag2], 'unchanged') || '_Aucun_'}
 `.trim();
 
   const outMd = CFG.markdownCompactTables ? minifyMarkdownString(md) : md;
-  const mdPath = path.join(CFG.analysisDir, `${repoName}_${tag1}_to_${tag2}_rapport.md`);
+  const mdPath = path.join(CFG.analysisDir, comparisonFileName(repoName, tag1, tag2, 'md'));
   await fs.writeFile(mdPath, outMd, 'utf8');
 
   console.log(`\t\t✅ Rapport enregistré : ${mdPath}`);
@@ -799,7 +771,7 @@ ${generateMarkdownTable(jsonReport.unchanged, repoName, tag1, tag2, 'unchanged')
 function getLastComponentData(compName, tags, resultsByTag) {
   const lastTag = [...tags].reverse().find((t) => resultsByTag[t]?.components.find((c) => c.name === compName));
   const data = resultsByTag[lastTag]?.components.find((c) => c.name === compName);
-  return { tag: lastTag, data };
+  return { sha: resultsByTag[lastTag]?.sha, data };
 }
 
 // ✅ Global : on tient compte de diffGit (async) + exclus exportAll & default
@@ -890,9 +862,9 @@ async function generateExcelReport(repoName, tags, components, matrix, resultsBy
   sheet.addRow(['Component', 'Visible Name', 'Uses ForwardRef', 'Default Export', 'Export File', 'Source File', ...tagsWithBreaking]);
 
   components.forEach((comp) => {
-    const { tag, data } = getLastComponentData(comp, tags, resultsByTag);
-    const exportFile = data?.file ? githubLink(repoName, tag, data.file) : '';
-    const sourceFile = data?.sourcefile ? githubLink(repoName, tag, data.sourcefile) : '';
+    const { sha, data } = getLastComponentData(comp, tags, resultsByTag);
+    const exportFile = data?.file ? githubLink(repoName, sha, data.file) : '';
+    const sourceFile = data?.sourcefile ? githubLink(repoName, sha, data.sourcefile) : '';
     const displayName = duplicates.has(comp.toLowerCase()) ? `${comp} ⚠️` : comp;
 
     const row = [
@@ -928,14 +900,14 @@ async function generateMarkdownReport(repoName, tags, components, matrix, result
   const rows = [['Component', 'Visible Name', 'Uses ForwardRef', 'Default Export', 'Export File', 'Source File', ...tagsWithBreaking]];
 
   components.forEach((comp) => {
-    const { tag, data } = getLastComponentData(comp, tags, resultsByTag);
+    const { sha, data } = getLastComponentData(comp, tags, resultsByTag);
 
     const exportLabel = data?.file ? String(data.file).replace(/\\/g, '/') : '';
-    const exportUrl = data?.file ? githubLink(repoName, tag, data.file) : '';
+    const exportUrl = data?.file ? githubLink(repoName, sha, data.file) : '';
     const exportFile = mdLink(exportLabel, exportUrl);
 
     const sourceLabel = data?.sourcefile ? String(data.sourcefile).replace(/\\/g, '/') : '';
-    const sourceUrl = data?.sourcefile ? githubLink(repoName, tag, data.sourcefile) : '';
+    const sourceUrl = data?.sourcefile ? githubLink(repoName, sha, data.sourcefile) : '';
     const sourceFile = mdLink(sourceLabel, sourceUrl);
 
     const displayName = duplicates.has(comp.toLowerCase()) ? `${comp} ⚠️` : comp;
@@ -1000,66 +972,76 @@ async function generateComponentComparisonReports(repoName, tags, resultsByTag, 
 async function analyzeRepo(repo) {
   console.log(`📁 Analyse du repository ${repo.name} en cours...`);
   const repoPath = await prepareRepo(repo);
-  const repoGit = simpleGit(repoPath);
 
-  const tags = filterAndSortTags((await repoGit.tags()).all);
-  const refs = [...tags];
-  if (tags.length === 0) {
-    console.log(`ℹ️ Aucun tag valide pour ${repo.name}`);
-    return;
-  }
-
+  const references = await discoverReferences(repoPath);
+  const refs = references.map(reference => reference.label);
   const resultsByTag = {};
   const gitRefs = {};
+  const activeCacheKeys = new Set();
 
-  for (const tag of tags) {
-    console.log(`\t🔖 Tag ${tag}...`);
-    const sha = (await repoGit.revparse([tag])).trim();
-    gitRefs[tag] = tag;
-    const shaKey = `${repo.name}_${tag}_${sha}`;
-    const outputFile = path.join(CFG.analysisDir, `${repo.name}_${tag}.json`);
-
-    if (shaIndex[shaKey]) {
-      console.log(`\t\t🔁 Déjà analysé : ${shaKey}`);
-      if (fs.existsSync(outputFile)) {
-        try {
-          // 🧹 Sanitize : exclure exportAll & default à la lecture
-          resultsByTag[tag] = sanitizeResult(await fs.readJson(outputFile));
-        } catch (e) {
-          console.warn(`\t\t⚠️ Impossible de relire ${outputFile} :`, e.message);
-        }
-      }
-      continue;
-    }
-
-    try {
-      const result = await analyzeTag(repo, repoPath, tag, tag, sha);
-      resultsByTag[tag] = result;
-      shaIndex[shaKey] = true;
-      console.log(`\t\t✅ Analyse enregistrée : ${outputFile}`);
-    } catch (e) {
-      console.warn(`\t\t⛔ Analyse échouée pour ${tag}:`, e.message);
-    }
-  }
-
-  // Recharge les éventuels tags non chargés (si déjà présents sur disque)
-  for (const tag of tags) {
-    if (!resultsByTag[tag]) {
-      const outputFile = path.join(CFG.analysisDir, `${repo.name}_${tag}.json`);
-      if (fs.existsSync(outputFile)) {
-        try {
-          resultsByTag[tag] = sanitizeResult(await fs.readJson(outputFile));
-        } catch (err) {
-          console.warn(`⚠️ Impossible de lire ${outputFile} :`, err.message);
-        }
+  // Les diffs sont indexés par SHA, et non par branche mutable.
+  const activeShas = new Set(references.map(reference => reference.sha));
+  const repoDiffs = gitDiffCache[repo.name] ?? {};
+  for (const from of Object.keys(repoDiffs)) {
+    if (!activeShas.has(from)) {
+      delete repoDiffs[from];
+    } else {
+      for (const to of Object.keys(repoDiffs[from])) {
+        if (!activeShas.has(to)) delete repoDiffs[from][to];
       }
     }
   }
+  gitDiffCache[repo.name] = repoDiffs;
+  for (const reference of references) {
+    const { label, sha } = reference;
+    console.log(`\t🔖 ${label}...`);
+    gitRefs[label] = sha;
+    const shaKey = `${repo.name}_${label}_${sha}`;
+    activeCacheKeys.add(shaKey);
+    const outputFile = path.join(CFG.analysisDir, analysisFileName(repo.name, label));
+    if (shaIndex[shaKey] && fs.existsSync(outputFile)) {
+      try {
+        const cached = await fs.readJson(outputFile);
+        if (cached.sha === sha && cached.tag === label && Array.isArray(cached.components)) {
+          resultsByTag[label] = {
+            ...sanitizeResult(cached), version: reference.version,
+            kind: reference.kind, branch: reference.branch ?? null,
+            isDevelop: reference.kind === 'develop',
+          };
+        }
+      } catch (error) {
+        logDebug(`Cache illisible pour ${label}, nouvelle analyse : ${error.message}`);
+      }
+    }
+    if (!resultsByTag[label]) {
+      resultsByTag[label] = await analyzeTag(repo, repoPath, sha, label, sha, reference);
+    }
+    // Réécrire aussi les caches anciens pour persister version/type/branche.
+    await fs.writeJson(outputFile, resultsByTag[label], { spaces: 2 });
+    shaIndex[shaKey] = true;
+  }
 
-  const developResult = await analyzeDevelop(repo, repoPath);
-  gitRefs[developResult.tag] = 'origin/develop';
-  resultsByTag[developResult.tag] = developResult;
-  refs.push(developResult.tag);
+  const expectedFiles = new Set(refs.map(label => analysisFileName(repo.name, label)));
+  for (let i = 1; i < refs.length; i++) {
+    for (const extension of ['json', 'md']) {
+      expectedFiles.add(comparisonFileName(repo.name, refs[i - 1], refs[i], extension));
+    }
+  }
+  // Suppressions de fichiers uniquement : aucun parcours ni effacement récursif.
+  for (const entry of await fs.readdir(CFG.analysisDir, { withFileTypes: true })) {
+    if (entry.isFile() && isGeneratedAnalysisFile(repo.name, entry.name) && !expectedFiles.has(entry.name)) {
+      await fs.unlink(path.join(CFG.analysisDir, entry.name));
+      console.log(`\t🧹 Analyse ou comparaison obsolète supprimée : ${entry.name}`);
+    }
+  }
+  for (const key of Object.keys(shaIndex)) {
+    const prefix = `${repo.name}_`;
+    if (!key.startsWith(prefix)) continue;
+    const label = key.slice(prefix.length).replace(/_[0-9a-f]{40,64}$/, '');
+    if (isGeneratedAnalysisFile(repo.name, analysisFileName(repo.name, label)) && !activeCacheKeys.has(key)) {
+      delete shaIndex[key];
+    }
+  }
 
   // Rapports pair-à-pair
   for (let i = 0; i < refs.length - 1; i++) {
@@ -1077,6 +1059,9 @@ async function analyzeRepo(repo) {
     repo: repo.name,
     tags: refs.map((t) => ({
       tag: t,
+      version: resultsByTag[t].version,
+      branch: resultsByTag[t].branch,
+      kind: resultsByTag[t].kind,
       sha: resultsByTag[t]?.sha,
       componentCount: resultsByTag[t]?.components.length ?? 0,
       dateTag: resultsByTag[t]?.dateTag ?? null,
@@ -1103,13 +1088,18 @@ async function analyzeRepo(repo) {
 // Entrée principale
 // --------------------------
 
-(async () => {
-  try {
-    for (const repo of CFG.repos) {
+async function main() {
+  for (const repo of CFG.repos) {
+    try {
       await analyzeRepo(repo);
+    } catch (e) {
+      console.error(`⛔ Analyse abandonnée pour ${repo.name}:`, e.message);
+      process.exitCode = 1;
     }
-  } catch (e) {
-    console.error('⛔ Erreur fatale:', e);
-    process.exit(1);
   }
-})();
+}
+
+if (require.main === module) main().catch(error => {
+  console.error('⛔ Erreur fatale:', error);
+  process.exitCode = 1;
+});

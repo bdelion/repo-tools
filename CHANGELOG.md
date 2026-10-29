@@ -7,6 +7,8 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 ## [Unreleased]
 ### Added
 
+- Analyse des branches `release/<version>` et `hotfix/<version>` avec validation
+  de `package.json`, tri SemVer et priorité tag > release > hotfix > develop (#2).
 - Sélection de tous les composants avec `graph:required-by-name --all` ou d’une liste texte UTF-8 avec `--components-file <chemin>`.
 - xxx
 - xxx
@@ -17,6 +19,8 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
+- Nettoyage des analyses, comparaisons et caches obsolètes lors des transitions
+  de versions ou suppressions de branches candidates ; liens et diffs basés sur les SHA (#2).
 - Correction du débordement de pile lors de la génération du graphe contenant des dépendances cycliques (#1) : parcours itératif et tests de non-régression.
 
 ## [1.0.0] - aaaa-mm-jj
