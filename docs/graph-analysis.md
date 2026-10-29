@@ -1,7 +1,6 @@
 # Analyse de graphe
 
-Cette fonctionnalité est issue de l'intégration de repo-tgf-analysis
-dans repo-tools.
+Cette fonctionnalité est issue de l'intégration de repo-tgf-analysis dans repo-tools.
 
 L'objectif est d'analyser le graphe des dépendances des composants.
 
