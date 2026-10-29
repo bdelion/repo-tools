@@ -27,6 +27,8 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
+- Restauration des emojis ✅, ❌, 🔄 et 🔁 dans les titres des rapports de comparaison
+  entre deux versions (#11).
 - Liens des rapports de comparaison entre deux versions vers la référence cible
   (`tag2`) et ses chemins, sans lien lorsque le fichier n’y existe plus (#10).
 - Historique conservé lors des migrations `.js`/`.jsx` vers `.ts`/`.tsx` au même

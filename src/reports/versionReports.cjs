@@ -152,7 +152,7 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
     const json = { repository: repoName, from: from.reference.label, to: to.reference.label };
     for (const [name, group] of Object.entries(groups)) json[name] = group.map(entry => entry.component);
     collectJson(outputs, path.join(CFG.analysisDir, comparisonFileName(repoName, json.from, json.to, 'json')), json);
-    const sections = [['added', 'Nouveaux composants'], ['removed', 'Composants supprimés'], ['changed', 'Composants modifiés'], ['unchanged', 'Composants inchangés']];
+    const sections = [['added', '✅ Nouveaux composants'], ['removed', '❌ Composants supprimés'], ['changed', '🔄 Composants modifiés'], ['unchanged', '🔁 Composants inchangés']];
     const markdown = [`# Rapport de comparaison des composants`, `**Repository** : ${repoName}`, `**De** : ${json.from}`, `**À** : ${json.to}`, '',
       ...sections.flatMap(([key, title]) => [`## ${title}`, '', pairTable(repoName, ctx, groups[key], index), ''])].join('\n');
     const target = path.join(CFG.analysisDir, comparisonFileName(repoName, json.from, json.to, 'md'));
