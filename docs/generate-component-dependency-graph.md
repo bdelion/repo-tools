@@ -30,8 +30,7 @@
     ```
 1. Traiter le résultat, un fichier `.tgf` enregistré dans le dossier `graphe`, via [yEd].
 
-Dans le fichier TGF, les nœuds sont triés par identifiant et les liens par source,
-puis par cible, dans l’ordre alphanumérique naturel (`Component2` avant `Component10`).
+Dans le fichier TGF, les nœuds sont triés par identifiant et les liens par source, puis par cible, dans l’ordre alphanumérique naturel (`Component2` avant `Component10`).
 
 ### Graphe statique (image ou DOT)
 
