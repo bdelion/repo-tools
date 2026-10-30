@@ -124,7 +124,9 @@ Les homonymes restent distincts. Un renommage/déplacement partage une seule lig
 si une correspondance unique repose sur un déplacement Git, le même symbole source,
 ou un contenu source strictement identique. `git diff --find-renames=50%` détecte
 les déplacements de fichiers ; il s’agit d’une heuristique, pas d’une preuve métier.
-Deux symboles source connus et différents ne sont pas fusionnés. Une ressemblance
+Deux symboles source connus et différents ne sont pas fusionnés automatiquement,
+sauf un passage default → nommé au même chemin pendant une migration TS avec
+le même nom public. Une ressemblance
 de noms ou un AST identique seul ne suffit pas. Les cas ambigus restent ajoutés/supprimés.
 Les comparaisons JSON et Markdown exposent `previous`, `changeReasons` et
 `historyMatch` pour les composants modifiés ; la matrice conserve les anciens noms
@@ -133,6 +135,14 @@ Les migrations `.js`/`.jsx` vers `.ts`/`.tsx` conservent également une seule li
 si le chemin sans extension et le symbole source sont identiques et la correspondance
 unique, même sans renommage détecté par Git. Le motif `typescriptMigration` est ajouté
 aux changements de chemins et de contenu ; les cas ambigus restent séparés.
+
+Les rapports affichent une ligne par **fichier source + symbole source**, plutôt
+qu’une ligne par réexport. `Component` privilégie l’unique alias public métier ;
+`Source Symbol`, `Public Names` et `Export Files` gardent la traçabilité. Les JSON
+d’analyse restent détaillés par export, tandis que les JSON de comparaison sont
+regroupés et contiennent `exports`, `exportFiles`, `publicNames` et `nameSelection`.
+Les noms préférés, correspondances explicites et marqueurs de revue sont décrits
+dans [Historique des composants et noms métier](report-component-history.md).
 
 Après une analyse réussie, les fichiers d’analyse et de comparaison devenus
 obsolètes sont supprimés pour le seul dépôt concerné, puis les comparaisons

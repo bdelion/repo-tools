@@ -20,6 +20,49 @@
     "shaIndexPath": "./analyses/sha_index.json",
     "gitDiffCachePath": "./analyses/git_diff_cache.json",
     "srcDir": "src",
+    "componentHistoryMappings": {
+        "repo-react": [
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/internal/accesibilityPropType.js",
+                    "sourceExport": "AriaLabelOrLabelBy"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/internal/accessibilityPropType.js",
+                    "sourceExport": "AriaLabelOrLabelBy"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.3.3",
+                    "sourcefile": "src/components/dialog/AnchorPosition.js",
+                    "sourceExport": "default"
+                },
+                "to": {
+                    "version": "1.0.0",
+                    "sourcefile": "src/hooks/constants.js",
+                    "sourceExport": "AnchorPosition"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "1.5.4",
+                    "sourcefile": "src/hooks/constants.js",
+                    "sourceExport": "AnchorPosition"
+                },
+                "to": {
+                    "version": "1.6.0",
+                    "sourcefile": "src/commons/constants.ts",
+                    "sourceExport": "AnchorPosition"
+                },
+                "reviewRequired": true
+            }
+        ]
+    },
     "includeExportAll": false,
     "excludeDefaultNameEverywhere": true,
     "excludeDirNames": [

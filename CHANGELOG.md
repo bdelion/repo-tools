@@ -7,6 +7,12 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 ## [Unreleased]
 ### Added
 
+- Rapports regroupés par symbole source, avec noms publics, noms métier préférés,
+  liste des réexports et feuille Excel `Export Files` (#16, #17).
+- Correspondances historiques explicites limitées à deux versions, avec marqueurs
+  de revue et feuille `Historique à vérifier` pour les refontes non détectées par Git (#14, #15).
+- Activation des trois correspondances proposées pour `repo-react`, toutes marquées
+  à vérifier jusqu’à validation métier (#14, #15).
 - Lockfile et chaîne `typecheck → lint → test` en CI ; correction des dépendances
   critiques et suppression de dagre-d3 inutilisé.
 - Analyse des branches `release/<version>` et `hotfix/<version>` avec validation
@@ -27,6 +33,10 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
+- Historique conservé lorsque le default JS devient un export nommé TS au même
+  chemin et avec le même nom public ; les barrels supplémentaires ne créent plus
+  de lignes dupliquées (#12).
+- Motifs de modification dédupliqués dans les cellules des matrices (#17).
 - Restauration des emojis ✅, ❌, 🔄 et 🔁 dans les titres des rapports de comparaison
   entre deux versions (#11).
 - Liens des rapports de comparaison entre deux versions vers la référence cible

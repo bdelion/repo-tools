@@ -25,28 +25,34 @@ Les assertions `<Type>valeur` restent donc valides dans un fichier `.ts` sans
 Une dépendance locale en dehors de la racine d’origine configurée est rejetée
 explicitement ; élargir cette racine pour analyser plusieurs packages locaux.
 
-Dans l’analyse des versions, les composants sont identifiés par le fichier
-d’export et le nom exporté. Les comparaisons et matrices ne fusionnent plus les
-homonymes. Le fichier source est résolu relativement au fichier de réexport,
+Dans les JSON d’analyse, les exports sont identifiés par le fichier d’export et
+le nom exporté. Les rapports regroupent ces exports par fichier source et symbole
+source : un symbole exposé par plusieurs barrels ou sous plusieurs noms garde
+une seule ligne, avec tous ses noms publics et fichiers d’export. Les homonymes
+issus de sources ou symboles différents restent distincts.
+Le fichier source est résolu relativement au fichier de réexport,
 avec le même résolveur ; il n’y a plus de rapprochement par basename.
 Pour suivre un renommage entre versions consécutives, le rapport rapproche les
 identités uniquement sur une correspondance unique : déplacement Git, même symbole
 source (`sourceExport`), ou contenu source strictement identique. Les empreintes
 portant sur le fichier entier, deux symboles source connus et différents ne sont
-pas fusionnés. Les cas ambigus restent ajoutés/supprimés ; aucune similarité de noms
+pas fusionnés automatiquement, sauf le passage default → nommé lors d’une migration
+TS au même chemin avec le même nom public. Les cas ambigus restent ajoutés/supprimés ; aucune similarité de noms
 ne suffit. Les analyses gardent leurs identifiants d’origine. Le rapport indique
 les anciens noms/chemins et le motif du rapprochement.
-Si plusieurs exports désignent la même source, le déplacement Git du fichier
-d’export puis le nom exporté inchangé servent à départager les correspondances
-déjà établies sur la source. Les exports directs et leurs alias gardent des lignes
-distinctes ; plusieurs alias renommés sans indice supplémentaire restent ambigus.
+Les exports directs et leurs alias sont regroupés avant le rapprochement historique.
+La disparition d’un seul barrel ne supprime pas le symbole s’il est encore exposé
+ailleurs. Les modifications de noms publics et de fichiers d’export restent signalées.
 Une migration `.js`/`.jsx` vers `.ts`/`.tsx` est également reconnue lorsque le
 chemin sans extension et le symbole source restent identiques, avec une correspondance
 unique dans les deux sens. Cette règle ne dépend ni d’un contenu identique ni d’un
 renommage Git. Les variantes ambiguës (`Button.ts` et `Button.tsx`), les symboles
 différents et les déplacements vers un autre répertoire ne sont pas rapprochés
 par cette seule règle. `typescriptMigration` apparaît dans les motifs de modification ;
-les différences de contenu restent signalées et les exports directs/alias restent distincts.
+les différences de contenu restent signalées et les exports d’origine restent listés.
+Les refontes sans preuve automatique peuvent être reliées par une correspondance
+configurée, limitée à une paire de versions et marquée `⚠️ À vérifier` par défaut.
+Voir [les règles de regroupement, noms métier et revue](report-component-history.md).
 Les liens des rapports globaux utilisent la référence nommée de plus haute version analysée si le fichier
 y existe encore, sinon le dernier tag analysé où il existe (ou, sans tag, la dernière
 candidate connue). Cette vérification utilise les arbres Git et s’applique séparément

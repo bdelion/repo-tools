@@ -5,14 +5,30 @@ const isTypescriptPathMigration = (before, after) => {
   return /\.jsx?$/.test(source) && /\.tsx?$/.test(target) &&
     source.replace(/\.jsx?$/, '') === target.replace(/\.tsx?$/, '');
 };
+const isTypescriptComponentMigration = (a, b) => {
+  if (!isTypescriptPathMigration(a.sourcefile, b.sourcefile) || !a.sourceExport || !b.sourceExport) return false;
+  if (a.sourceExport === b.sourceExport) return true;
+  // Un default devient un export nommé du même nom public au même chemin.
+  const publicNames = (a.publicNames ?? [a.name]).filter(name => name !== 'default');
+  return a.sourceExport === 'default' && b.sourceExport !== 'default' && publicNames.length === 1 &&
+    publicNames[0] === b.sourceExport && (b.publicNames ?? [b.name]).includes(b.sourceExport);
+};
 const collator = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
 const compareText = (a, b) => collator.compare(a, b) || (a < b ? -1 : a > b ? 1 : 0);
 const compareComponents = (a, b) => compareText(a.name ?? '', b.name ?? '') || compareText(componentKey(a), componentKey(b));
 
-function matchComponents(previous, current, renames) {
+function matchComponents(previous, current, renames, explicitMatches = new Map()) {
   const matches = new Map();
   const old = new Map(previous.map(component => [componentKey(component), component]));
   const next = new Map(current.map(component => [componentKey(component), component]));
+  const targets = new Set();
+  for (const [from, to] of explicitMatches) {
+    if (!old.has(from) || !next.has(to) || targets.has(to)) {
+      throw new Error(`Correspondance historique invalide ou ambiguë : ${from} -> ${to}`);
+    }
+    matches.set(from, to); targets.add(to);
+  }
+  for (const [from, to] of matches) { old.delete(from); next.delete(to); }
   for (const key of old.keys()) {
     if (next.has(key)) { matches.set(key, key); old.delete(key); next.delete(key); }
   }
@@ -22,10 +38,11 @@ function matchComponents(previous, current, renames) {
     const sameSymbol = a.sourceExport && a.sourceExport === b.sourceExport;
     // Les empreintes portent sur le fichier entier : deux symboles distincts
     // d'un module ne deviennent pas un seul composant parce que ce module est identique.
-    if (a.sourceExport && b.sourceExport && !sameSymbol) return 0;
+    const migration = isTypescriptComponentMigration(a, b);
+    if (a.sourceExport && b.sourceExport && !sameSymbol && !migration) return 0;
     let evidence = 0;
     if (sourceA && sourceB && renames.get(sourceA) === sourceB) evidence = 80;
-    else if (sameSymbol && isTypescriptPathMigration(sourceA, sourceB)) evidence = 75;
+    else if (migration) evidence = 75;
     else if (sourceA && sourceA === sourceB && sameSymbol) evidence = 60;
     else if (fileA && renames.get(fileA) === fileB && a.name === b.name) evidence = 70;
     else if (a.contentHash && a.contentHash === b.contentHash) evidence = 40;
@@ -65,17 +82,40 @@ function matchComponents(previous, current, renames) {
   return matches;
 }
 
-function buildComponentHistory(snapshots, renameMaps) {
+function buildComponentHistory(snapshots, renameMaps, mappings = []) {
+  if (!Array.isArray(mappings)) throw new Error('componentHistoryMappings doit contenir une liste par dépôt');
+  for (const mapping of mappings) {
+    for (const endpoint of [mapping?.from, mapping?.to]) {
+      if (!endpoint || ['version', 'sourcefile', 'sourceExport'].some(field => typeof endpoint[field] !== 'string' || !endpoint[field].trim())) {
+        throw new Error('Correspondance historique : version, sourcefile et sourceExport requis dans from et to');
+      }
+    }
+  }
   const rows = new Map();
   const assignments = [];
   const maps = [];
+  const configuredMatches = [];
+  const configuredReviews = [];
   snapshots.forEach((snapshot, index) => {
     const assigned = new Map();
     const current = new Map();
     const components = snapshot.result.components;
     if (index > 0) {
       const previous = snapshots[index - 1].result.components;
-      const matches = matchComponents(previous, components, renameMaps[index - 1]);
+      const version = snapshot => snapshot.reference.version ?? snapshot.result.version ?? snapshot.reference.label;
+      const configured = new Map();
+      const reviews = new Set();
+      for (const mapping of mappings) {
+        if (mapping.from.version !== version(snapshots[index - 1]) || mapping.to.version !== version(snapshot)) continue;
+        const from = `${normalizePath(mapping.from.sourcefile)}#${mapping.from.sourceExport}`;
+        const to = `${normalizePath(mapping.to.sourcefile)}#${mapping.to.sourceExport}`;
+        if (configured.has(from) || [...configured.values()].includes(to)) throw new Error(`Correspondance historique dupliquée : ${from} -> ${to}`);
+        configured.set(from, to);
+        if (mapping.reviewRequired !== false) reviews.add(from);
+      }
+      configuredMatches[index] = configured;
+      configuredReviews[index] = reviews;
+      const matches = matchComponents(previous, components, renameMaps[index - 1], configured);
       for (const [oldKey, newKey] of matches) assigned.set(newKey, assignments[index - 1].get(oldKey));
     }
     for (const component of components) {
@@ -97,7 +137,7 @@ function buildComponentHistory(snapshots, renameMaps) {
     assignments.push(assigned);
     maps.push(current);
   });
-  return { rows, assignments, maps };
+  return { rows, assignments, maps, configuredMatches, configuredReviews };
 }
 
-module.exports = { normalizePath, componentKey, compareComponents, buildComponentHistory, matchComponents, isTypescriptPathMigration };
+module.exports = { normalizePath, componentKey, compareComponents, buildComponentHistory, matchComponents, isTypescriptPathMigration, isTypescriptComponentMigration };
