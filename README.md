@@ -57,6 +57,10 @@ Dépendances principales :
 
 Consultez la doc détaillée : [analyse-component-versions].
 
+Pour préparer les correspondances historiques manquantes par dépôt :
+`npm run history:propose -- --config src/config.analyse-component-versions.json`.
+Voir le [mode opératoire de proposition et d’import](docs/component-history-mappings.md).
+
 ### Graphes de dépendances
 
 Consultez la doc détaillée : [generate-component-dependency-graph].

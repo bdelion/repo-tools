@@ -7,6 +7,9 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 ## [Unreleased]
 ### Added
 
+- Commande `history:propose` et mode opératoire pour générer les propositions de
+  correspondances par dépôt, examiner les ambiguïtés puis importer un fragment
+  avec sauvegarde et marqueurs de revue (#20).
 - Rapports regroupés par symbole source, avec noms publics, noms métier préférés,
   liste des réexports et feuille Excel `Export Files` (#16, #17).
 - Correspondances historiques explicites limitées à deux versions, avec marqueurs
@@ -33,6 +36,8 @@ Toutes les modifications notables apportées à ce projet seront documentées da
 
 ### Fixed
 
+- Continuité de l’historique pour les changements de casse des chemins source
+  sans fusion des fichiers distincts qui coexistent, avec liens conservant la casse réelle (#19).
 - Historique conservé lorsque le default JS devient un export nommé TS au même
   chemin et avec le même nom public ; les barrels supplémentaires ne créent plus
   de lignes dupliquées (#12).

@@ -120,3 +120,15 @@ absent de la référence choisie.
 
 Les rapports sont reconstruits à chaque exécution : changer le regroupement, un
 nom préféré ou une correspondance ne nécessite pas de vider les analyses en cache.
+
+## Changements de casse et propositions de correspondances
+
+Un changement de casse du chemin source, avec le même symbole et une correspondance
+unique, conserve son historique (`pathCaseChanged`, `caseOnlyRename`). Les chemins
+réels sont conservés dans les liens ; deux fichiers distincts qui coexistent ne
+sont pas regroupés simplement parce que leurs chemins sont identiques en minuscules.
+
+Pour préparer les correspondances manquantes par dépôt, utiliser le
+[mode opératoire `history:propose`](component-history-mappings.md). La génération
+ne modifie pas la configuration ; l’import est explicite et marque les nouvelles
+correspondances à vérifier.

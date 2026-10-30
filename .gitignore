@@ -583,3 +583,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/git,vim,java,emacs,linux,macos,maven,python,eclipse,windows,notepadpp,sonarqube,tortoisegit,intellij+all,visualstudiocode,react
+
+# Sauvegardes locales avant import des propositions historiques
+*.history-backup-*.json
