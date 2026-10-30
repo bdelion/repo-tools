@@ -23,8 +23,8 @@ export function addDependency(
     parent: string,
     child: string
 ): void {
-    if (!target[parent]) {
-        target[parent] = new Set();
+    if (!Object.prototype.hasOwnProperty.call(target, parent)) {
+        Object.defineProperty(target, parent, { value: new Set<string>(), enumerable: true, configurable: true, writable: true });
     }
     target[parent].add(child);
 }

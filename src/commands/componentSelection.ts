@@ -6,7 +6,7 @@ export function selectComponentNames(args: string[], graph: Graph): string[] {
     let names: string[];
 
     if (args[0] === '--all' && args.length === 1) {
-        names = graph.getNodes().map(label => label.split(/\s+/)[0]);
+        names = graph.getNodes().map(node => graph.getLabel(node).split(/\s+/)[0]);
     } else if (args[0] === '--components-file' && args.length === 2 && !args[1].startsWith('--')) {
         names = fs.readFileSync(args[1], 'utf8')
             .replace(/^\uFEFF/, '')

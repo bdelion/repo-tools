@@ -647,7 +647,7 @@ let compiledLibMatchers = null;
  */
 function globToRegex(glob, flags = '') {
   const esc = glob
-    .replace(/[.\+^${}()\[\]\\]/g, '\\$&')
+    .replace(/[.+^${}()[\]\\]/g, '\\$&')
     .replace(/\*/g, '.*');
   return new RegExp('^' + esc + '$', flags);
 }
@@ -786,7 +786,7 @@ function parseYarnLockFile(content) {
   try {
     const res = parseYarnLock(content);
     if (res && res.object) return res.object;
-  } catch { }
+  } catch { return null; }
   return null;
 }
 
@@ -839,7 +839,7 @@ function getNpmLockResolved(npmLock, depName) {
  * @param {boolean} [isKts=false] - Indique un script Kotlin DSL.
  * @returns {string|null} Version extraite ou null si introuvable.
  */
-function extractGradleProjectVersion(buildScript, isKts = false) {
+function extractGradleProjectVersion(buildScript) {
   if (!buildScript || typeof buildScript !== 'string') return null;
   // 1) Supprime commentaires /* ... */ et // ...
   const withoutBlockComments = buildScript.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -1250,9 +1250,8 @@ async function scanRepo(owner, repoMeta) {
     const buildGradleKtsPath = path.posix.join(dir, 'build.gradle.kts');
     const buildGradle = await getFileIfExists(owner, repo, rootSha, buildGradlePath);
     const buildGradleKts = await getFileIfExists(owner, repo, rootSha, buildGradleKtsPath);
-    const isKts = Boolean(buildGradleKts);
     const buildScript = buildGradle ?? buildGradleKts ?? '';
-    const rootVersion = extractGradleProjectVersion(buildScript, isKts);
+    const rootVersion = extractGradleProjectVersion(buildScript);
 
     pushProject({
       org: owner,

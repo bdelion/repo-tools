@@ -17,7 +17,7 @@
 
 ## 🧰 Prérequis
 
-- **Node.js ≥ 18** (**Node 20 LTS recommandé**)  
+- **Node.js 22.16+ (branche 22) ou Node.js 24**
   Utilisez `nvm use` pour appliquer la version définie dans `.nvmrc`.
 - **Git CLI** installé et accessible dans le `PATH`.
 - Accès aux dépôts Git (SSH recommandé).
@@ -38,6 +38,10 @@ nvm use
 # Installer les dépendances
 npm ci
 ```
+
+Le lockfile est versionné. `npm run check` exécute TypeScript, le lint global et
+les tests ; `npm run build` vérifie réellement le typage. GitHub Actions et Jenkins
+utilisent cette validation. Voir [les changements de fiabilité et de format](docs/reliability.md).
 
 Dépendances principales :
 
@@ -66,7 +70,7 @@ Consultez la doc détaillée : [scan-ghe].
 #### Génération du graphe
 
 ```bash
-npm run analyse-components
+npm run generate-component-dependency-graph
 ```
 
 #### Analyse du graphe
@@ -164,11 +168,12 @@ npm run graph:required-by-name graphe/repo-react-component-dependency-graph.tgf 
 
 ```jsonc
   "scripts": {
-    "build": "echo 'useless pipeline step'",
+    "build": "npm run typecheck",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "generate-component-dependency-graph": "ts-node src/generate-component-dependency-graph.ts",
-    "analyse-component-versions": "node src/analyse-exports.js"
+    "analyse-component-versions": "node src/analyse-component-versions.js"
   },
 ```
 

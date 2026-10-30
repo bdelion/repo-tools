@@ -32,7 +32,7 @@
 
 ## 🧩 Pré-requis
 
-- Node.js ≥ 18
+- Node.js 22.16+ (branche 22) ou Node.js 24
 - Python ≥ 3.9
 - Accès API GitHub avec token (`GHE_TOKEN`) et base URL (`GHE_BASE_URL`).
 - Droits **Code Search** si tu actives le pré‑filtrage en mode `code` (sinon `tree`).

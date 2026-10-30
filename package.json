@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "test": "node --require ts-node/register --test tests/*.test.ts",
-    "build": "echo 'useless pipeline step'",
+    "build": "npm run typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "generate-component-dependency-graph": "ts-node src/generate-component-dependency-graph.ts",
@@ -12,7 +12,9 @@
     "scan-ghe": "node src/scan-ghe.js",
     "graph:analyze": "ts-node src/commands/analyze-graph.ts",
     "graph:required": "ts-node src/commands/required-components.ts",
-    "graph:required-by-name": "ts-node src/commands/required-components-by-name.ts"
+    "graph:required-by-name": "ts-node src/commands/required-components-by-name.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm test"
   },
   "repository": {
     "type": "git",
@@ -32,7 +34,6 @@
     "eslint": "^9.23.0",
     "globals": "^16.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2",
     "typescript-eslint": "^8.29.0"
   },
   "dependencies": {
@@ -42,7 +43,6 @@
     "ast-types": "^0.14.2",
     "d3": "^7.9.0",
     "dagre": "^0.8.5",
-    "dagre-d3": "^0.6.4",
     "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.3.0",
@@ -50,7 +50,16 @@
     "graphlib": "^2.1.8",
     "madge": "^8.0.0",
     "semver": "^7.7.3",
-    "simple-git": "^3.28.0",
-    "yaml": "^2.8.1"
+    "simple-git": "^4.0.2",
+    "yaml": "^2.8.1",
+    "typescript": "^5.8.2"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
+  },
+  "engines": {
+    "node": ">=22.16.0 <23 || >=24.0.0 <25"
   }
 }

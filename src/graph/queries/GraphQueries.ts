@@ -1,4 +1,5 @@
 import { Graph } from '../model/Graph';
+import { analyzeTopology } from '../topology';
 import { RequiredComponent } from '../types/RequiredComponent';
 import { ComponentMetrics } from '../types/ComponentMetrics';
 
@@ -10,9 +11,11 @@ export interface ComponentDependencyReport {
     directDependencies: string[];
     transitiveDependencies: string[];
     sharedDependencies: string[];
+    cyclicGroups: string[][];
     maxDepth: number;
     complexityScore: number;
     componentMetrics: ComponentMetrics[];
+    dependencyTreeTruncated: boolean;
     dependencyTree: Record<string, unknown>;
     dependencyTreeText: string;
 }
@@ -30,100 +33,43 @@ export class GraphQueries {
         return this.graph.getDependents(component,);
     }
 
-    public getTransitiveDependencies(component: string,): string[] {
-        const result = new Set<string>();
-        const visit = (node: string,): void => {
-            const dependencies = this.graph.getDependencies(node,);
-            dependencies.forEach(dependency => {
-                if (result.has(dependency,)) {
-                    return;
-                }
-                result.add(dependency,);
-                visit(dependency,);
-            },);
-        };
+    private topology?: ReturnType<typeof analyzeTopology>;
 
-        visit(component);
-
-        return [...result];
+    private structure() {
+        return this.topology ??= analyzeTopology(this.graph);
     }
 
-    public getTransitiveDependents(
-        component: string,
-    ): string[] {
-        const result = new Set<string>();
-
-        const visit = (
-            node: string,
-        ): void => {
-            const dependents =
-                this.graph.getDependents(
-                    node,
-                );
-
-            dependents.forEach(
-                dependent => {
-                    if (
-                        result.has(
-                            dependent,
-                        )
-                    ) {
-                        return;
-                    }
-
-                    result.add(
-                        dependent,
-                    );
-
-                    visit(
-                        dependent,
-                    );
-                },
-            );
-        };
-
-        visit(component);
-
-        return [...result];
-    }
-
-    public getRequiredComponents(
-        components: string[],
-    ): string[] {
-        const result =
-            new Set<string>();
-
-        const visit = (
-            component: string,
-        ): void => {
-            if (
-                result.has(
-                    component,
-                )
-            ) {
-                return;
+    private reachable(component: string, reverse = false): string[] {
+        const visited = new Set([component]);
+        const pending = [component];
+        const result: string[] = [];
+        while (pending.length) {
+            const node = pending.pop()!;
+            const neighbors = reverse ? this.graph.getDependents(node) : this.graph.getDependencies(node);
+            for (const child of neighbors) {
+                if (visited.has(child)) continue;
+                visited.add(child);
+                result.push(child);
+                pending.push(child);
             }
+        }
+        return result;
+    }
 
-            result.add(
-                component,
-            );
+    public getTransitiveDependencies(component: string): string[] {
+        return this.reachable(component);
+    }
 
-            this.graph
-                .getDependencies(
-                    component,
-                )
-                .forEach(
-                    visit,
-                );
-        };
+    public getTransitiveDependents(component: string): string[] {
+        return this.reachable(component, true);
+    }
 
-        components.forEach(
-            visit,
-        );
-
-        return [
-            ...result,
-        ].sort();
+    public getRequiredComponents(components: string[]): string[] {
+        const result = new Set(components);
+        for (const component of components) {
+            for (const child of this.reachable(component)) result.add(child);
+        }
+        return [...result].sort();
     }
 
     public findByComponentName(
@@ -133,7 +79,7 @@ export class GraphQueries {
             .getNodes()
             .filter(node => {
                 const name =
-                    node
+                    this.graph.getLabel(node)
                         .split(
                             /\s+/,
                         )[0];
@@ -169,51 +115,26 @@ export class GraphQueries {
         );
     }
 
-    private buildTree(
-        component: string,
-        visited =
-            new Set<string>(),
-    ): Record<
-        string,
-        unknown
-    > {
-        if (
-            visited.has(
-                component,
-            )
-        ) {
-            return {};
+    private treeTruncated = false;
+
+    private buildTree(component: string): Record<string, unknown> {
+        const root: Record<string, unknown> = {};
+        const visited = new Set([component]);
+        const pending = [{ node: component, tree: root, depth: 0 }];
+        let count = 0;
+        while (pending.length) {
+            const { node, tree, depth } = pending.pop()!;
+            if (depth >= 128) { tree.$truncated = true; this.treeTruncated = true; continue; }
+            for (const child of this.graph.getDependencies(node)) {
+                if (++count > 5000) { tree.$truncated = true; this.treeTruncated = true; return root; }
+                if (visited.has(child)) { tree[child] = { $ref: child }; continue; }
+                visited.add(child);
+                const children: Record<string, unknown> = {};
+                tree[child] = children;
+                pending.push({ node: child, tree: children, depth: depth + 1 });
+            }
         }
-
-        visited.add(
-            component,
-        );
-
-        const tree:
-            Record<
-                string,
-                unknown
-            > = {};
-
-        this.graph
-            .getDependencies(
-                component,
-            )
-            .forEach(
-                dependency => {
-                    tree[
-                        dependency
-                    ] =
-                        this.buildTree(
-                            dependency,
-                            new Set(
-                                visited,
-                            ),
-                        );
-                },
-            );
-
-        return tree;
+        return root;
     }
 
     public buildDependencyTree(
@@ -230,66 +151,26 @@ export class GraphQueries {
         };
     }
 
-    private renderNode(
-        node: string,
-        prefix = '',
-        isLast = true,
-        visited =
-            new Set<string>(),
-    ): string[] {
-        if (
-            visited.has(node)
-        ) {
-            return [];
+    private renderNode(node: string, prefix = '', isLast = true, visited = new Set<string>()): string[] {
+        const lines: string[] = [];
+        const pending = [{ node, prefix, isLast, depth: 0 }];
+        while (pending.length) {
+            const current = pending.pop()!;
+            if (lines.length >= 5000 || current.depth >= 128) {
+                lines.push(current.prefix + '[truncated]');
+                this.treeTruncated = true;
+                break;
+            }
+            const label = this.graph.getLabel(current.node);
+            lines.push(current.prefix + (current.isLast ? '??? ' : '??? ') + label + (visited.has(current.node) ? ' [reference]' : ''));
+            if (visited.has(current.node)) continue;
+            visited.add(current.node);
+            const children = this.graph.getDependencies(current.node);
+            for (let i = children.length - 1; i >= 0; i--) {
+                pending.push({ node: children[i], prefix: current.prefix + (current.isLast ? '    ' : '?   '),
+                    isLast: i === children.length - 1, depth: current.depth + 1 });
+            }
         }
-
-        visited.add(
-            node,
-        );
-
-        const lines: string[] =
-            [];
-
-        lines.push(
-            prefix +
-            (isLast
-                ? '└── '
-                : '├── ') +
-            node,
-        );
-
-        const dependencies =
-            this.graph.getDependencies(
-                node,
-            );
-
-        dependencies.forEach(
-            (
-                dependency,
-                index,
-            ) => {
-                const last =
-                    index ===
-                    dependencies.length -
-                    1;
-
-                const childPrefix =
-                    prefix +
-                    (isLast
-                        ? '    '
-                        : '│   ');
-
-                lines.push(
-                    ...this.renderNode(
-                        dependency,
-                        childPrefix,
-                        last,
-                        visited,
-                    ),
-                );
-            },
-        );
-
         return lines;
     }
 
@@ -340,48 +221,8 @@ export class GraphQueries {
             .join('\n\n');
     }
 
-    private computeDepth(
-        component: string,
-        level = 0,
-        visited =
-            new Set<string>(),
-    ): number {
-        if (
-            visited.has(
-                component,
-            )
-        ) {
-            return level;
-        }
-
-        visited.add(
-            component,
-        );
-
-        const dependencies =
-            this.graph.getDependencies(
-                component,
-            );
-
-        if (
-            dependencies.length ===
-            0
-        ) {
-            return level;
-        }
-
-        return Math.max(
-            ...dependencies.map(
-                dependency =>
-                    this.computeDepth(
-                        dependency,
-                        level + 1,
-                        new Set(
-                            visited,
-                        ),
-                    ),
-            ),
-        );
+    private computeDepth(component: string): number {
+        return this.structure().levels.get(component) ?? 0;
     }
 
     private findSharedDependencies(
@@ -428,8 +269,8 @@ export class GraphQueries {
         return [...intersection].sort();
     }
 
-    private buildComponentMetrics(component: string, componentLevels: Record<string, any> = {},): ComponentMetrics {
-        const level = componentLevels[component]?.level ?? -1;
+    private buildComponentMetrics(component: string): ComponentMetrics {
+        const level = this.computeDepth(component);
         const directDependencies = this.getDirectDependencies(component,);
         const transitiveDependencies = this.getTransitiveDependencies(component,);
         const requiredComponents = this.getRequiredComponents([component,]);
@@ -449,9 +290,10 @@ export class GraphQueries {
         return Math.min(10000, Math.round(requiredCount * 3 + maxDepth * 15,),);
     }
 
-    public getRequiredComponentsByNameDetailed(componentNames: string[], componentLevels: Record<string, any> = {},): ComponentDependencyReport {
+    public getRequiredComponentsByNameDetailed(componentNames: string[], componentLevels: Record<string, { level?: number; name?: string; path?: string }> = {},): ComponentDependencyReport {
+        this.treeTruncated = false;
         const foundComponents = this.findByComponentNames(componentNames,);
-        const foundNames = foundComponents.map(component => component.split(/\s+/,)[0],);
+        const foundNames = foundComponents.map(component => this.graph.getLabel(component).split(/\s+/,)[0],);
         const missingNames = componentNames.filter(componentName => !foundNames.includes(componentName,),);
         const requiredComponents = this.getRequiredComponents(foundComponents,);
         const requiredComponentsDetailed = requiredComponents.map(component => {
@@ -460,7 +302,7 @@ export class GraphQueries {
                 component,
                 name: metadata?.name ?? '',
                 path: metadata?.path ?? '',
-                level: metadata?.level ?? -1,
+                level: this.computeDepth(component),
             };
         },);
         requiredComponentsDetailed.sort((a, b) => a.level - b.level,);
@@ -483,7 +325,7 @@ export class GraphQueries {
             component => { Object.assign(dependencyTree, this.buildDependencyTree(component,),); },
         );
 
-        const componentMetrics = foundComponents.map(component => this.buildComponentMetrics(component, componentLevels,),);
+        const componentMetrics = foundComponents.map(component => this.buildComponentMetrics(component),);
         componentMetrics.sort((a, b) => {
             if (a.level !== b.level) {
                 return a.level - b.level;
@@ -491,7 +333,10 @@ export class GraphQueries {
             return a.complexityScore - b.complexityScore;
         });
 
+        const dependencyTreeText = this.renderDependencyTrees(foundComponents);
         return {
+            dependencyTreeTruncated: this.treeTruncated,
+            cyclicGroups: this.structure().cyclicGroups.filter(group => group.some(node => requiredComponents.includes(node))),
             requestedNames: componentNames,
             foundComponents,
             missingNames,
@@ -503,7 +348,7 @@ export class GraphQueries {
             complexityScore: this.computeComplexityScore(requiredComponents.length, maxDepth,),
             componentMetrics,
             dependencyTree,
-            dependencyTreeText: this.renderDependencyTrees(foundComponents,),
+            dependencyTreeText,
         };
     }
 }

@@ -29,22 +29,24 @@ export class TgfParser {
                 const id = parts.shift()!;
                 const label = parts.join(' ');
 
+                if (!id || !label || nodes.has(id)) throw new Error(`Nœud TGF invalide ou dupliqué : ${line}`);
+
                 nodes.set(id, label);
 
                 dependencies.set(
-                    label,
+                    id,
                     new Set<string>(),
                 );
 
                 reverseDependencies.set(
-                    label,
+                    id,
                     new Set<string>(),
                 );
             } else {
                 const parts = line.split(/\s+/);
 
-                const source = nodes.get(parts[0]);
-                const target = nodes.get(parts[1]);
+                const [source, target] = parts;
+                if (!nodes.has(source) || !nodes.has(target)) throw new Error(`Arête TGF vers un nœud inconnu : ${line}`);
 
                 if (source && target) {
                     dependencies
@@ -58,9 +60,11 @@ export class TgfParser {
             }
         }
 
+        if (!inEdges) throw new Error('Séparateur TGF # absent');
         return new Graph(
             dependencies,
             reverseDependencies,
+            nodes,
         );
     }
 }
