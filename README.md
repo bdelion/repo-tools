@@ -217,6 +217,9 @@ Nous utilisons [SemVer] pour le versioning. Pour les versions disponibles, voir 
 [Make a README]: https://www.makeareadme.com/#template-1 "README Template et bonnes pratiques"
 
 [analyse-component-versions]: docs/analyse-component-versions.md
+Pour exporter les rapports Excel en historiques YAML : `npm run history:export`.
+Voir le [mode opératoire](docs/component-history-export.md).
+
 [generate-component-dependency-graph]: docs/generate-component-dependency-graph.md
 [scan-ghe]: docs/scan-ghe.md
 
