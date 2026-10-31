@@ -1,5 +1,9 @@
 const normalizePath = value => value ? String(value).replace(/\\/g, '/') : '';
 const componentKey = component => component.id ?? `${normalizePath(component.file)}#${component.name}`;
+const isCaseOnlyPathChange = (before, after) => {
+  const source = normalizePath(before), target = normalizePath(after);
+  return source && target && source !== target && source.toLowerCase() === target.toLowerCase();
+};
 const isTypescriptPathMigration = (before, after) => {
   const source = normalizePath(before), target = normalizePath(after);
   return /\.jsx?$/.test(source) && /\.tsx?$/.test(target) &&
@@ -43,6 +47,7 @@ function matchComponents(previous, current, renames, explicitMatches = new Map()
     let evidence = 0;
     if (sourceA && sourceB && renames.get(sourceA) === sourceB) evidence = 80;
     else if (migration) evidence = 75;
+    else if (sameSymbol && isCaseOnlyPathChange(sourceA, sourceB)) evidence = 65;
     else if (sourceA && sourceA === sourceB && sameSymbol) evidence = 60;
     else if (fileA && renames.get(fileA) === fileB && a.name === b.name) evidence = 70;
     else if (a.contentHash && a.contentHash === b.contentHash) evidence = 40;
@@ -140,4 +145,4 @@ function buildComponentHistory(snapshots, renameMaps, mappings = []) {
   return { rows, assignments, maps, configuredMatches, configuredReviews };
 }
 
-module.exports = { normalizePath, componentKey, compareComponents, buildComponentHistory, matchComponents, isTypescriptPathMigration, isTypescriptComponentMigration };
+module.exports = { normalizePath, componentKey, compareComponents, buildComponentHistory, matchComponents, isTypescriptPathMigration, isTypescriptComponentMigration, isCaseOnlyPathChange };

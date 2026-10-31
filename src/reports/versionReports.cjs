@@ -2,7 +2,7 @@ const path = require('node:path');
 const ExcelJS = require('exceljs');
 const { comparisonFileName } = require('../versionReferences.cjs');
 const { createGitHistoryReader } = require('./gitHistory.cjs');
-const { componentKey, normalizePath, compareComponents, buildComponentHistory, isTypescriptPathMigration, isTypescriptComponentMigration } = require('./componentHistory.cjs');
+const { componentKey, normalizePath, compareComponents, buildComponentHistory, isTypescriptPathMigration, isTypescriptComponentMigration, isCaseOnlyPathChange } = require('./componentHistory.cjs');
 const { groupReportComponents } = require('./reportComponents.cjs');
 
 function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, createHistoryReader = createGitHistoryReader }) {
@@ -113,6 +113,9 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
       if (JSON.stringify(before.exportFiles) !== JSON.stringify(current.exportFiles)) reasons.push('exportFilesChanged');
       if (normalizePath(before.file) !== normalizePath(current.file)) reasons.push('exportMoved');
       if (normalizePath(before.sourcefile) !== normalizePath(current.sourcefile)) reasons.push('sourceMoved');
+      const sourceCaseChanged = before.sourceExport === current.sourceExport && isCaseOnlyPathChange(before.sourcefile, current.sourcefile);
+      const caseOnlyRename = sourceCaseChanged || isCaseOnlyPathChange(before.file, current.file);
+      if (caseOnlyRename) reasons.push('pathCaseChanged');
       const typescriptMigration = isTypescriptComponentMigration(before, current) ||
         (before.sourceExport && before.sourceExport === current.sourceExport && isTypescriptPathMigration(before.file, current.file));
       if (typescriptMigration) reasons.push('typescriptMigration');
@@ -127,6 +130,7 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
         const historyMatch = ctx.configuredMatches[index]?.has(componentKey(before)) ? 'configuredMapping'
           : componentKey(before) === componentKey(current) ? 'sameIdentity'
           : renamedSource ? 'gitSourceRename'
+          : sourceCaseChanged ? 'caseOnlyRename'
           : typescriptMigration ? 'typescriptMigration'
           : normalizePath(before.sourcefile) === normalizePath(current.sourcefile) && before.sourceExport && before.sourceExport === current.sourceExport
             ? 'sameSourceSymbol'

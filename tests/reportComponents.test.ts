@@ -5,13 +5,49 @@ import path from 'node:path';
 
 const load = createRequire(__filename);
 const { groupReportComponents } = load('../src/reports/reportComponents.cjs');
-const { buildComponentHistory } = load('../src/reports/componentHistory.cjs');
+const { buildComponentHistory, matchComponents } = load('../src/reports/componentHistory.cjs');
 const { createVersionReports } = load('../src/reports/versionReports.cjs');
 const ExcelJS = load('exceljs');
 const component = (name: string, file: string, sourcefile: string, sourceExport: string, contentHash = 'old') =>
     ({ id: `${file}#${name}`, name, file, sourcefile, sourceExport, contentHash });
 const snapshot = (version: string, components: ReturnType<typeof component>[]) =>
     ({ reference: { version, label: version, sha: version, kind: 'tag' }, result: { components } });
+
+test('changement de casse : correspondance unique sans fusion des fichiers coexistants (#19)', () => {
+    const before = component('CopyString', 'src/CopyString/index.ts', 'src/CopyString/CopyString.tsx', 'default');
+    const after = component('CopyString', 'src/copyString/index.ts', 'src/copyString/copyString.tsx', 'default', 'new');
+    assert.equal(matchComponents([before], [after], new Map()).get(before.id), after.id);
+    assert.equal(matchComponents([before, after], [before, after], new Map()).size, 2);
+    assert.equal(matchComponents([before], [before, after], new Map()).size, 1);
+    const other = { ...before, id: 'SRC/CopyString/index.ts#CopyString', file: 'SRC/CopyString/index.ts', sourcefile: 'SRC/CopyString/CopyString.tsx' };
+    assert.equal(matchComponents([before, other], [after], new Map()).size, 0);
+    assert.equal(matchComponents([before], [{ ...after, sourceExport: 'anotherSymbol' }], new Map()).size, 0);
+});
+
+test('CopyString : une ligne, motif de casse et liens avec la casse cible exacte (#19)', async () => {
+    const before = component('CopyString', 'src/CopyString/index.ts', 'src/CopyString/CopyString.tsx', 'default');
+    const after = component('CopyString', 'src/copyString/index.ts', 'src/copyString/copyString.tsx', 'default', 'new');
+    const snapshots = [snapshot('1.7.1', [before]), snapshot('1.7.2', [after])];
+    const outputs = new Map<string, string | Buffer>();
+    const reports = createVersionReports({ config: { tmpDir: '.', reportsDir: 'reports', analysisDir: 'analyses', githubBaseUrl: 'https://example.org' },
+        logDebug: () => {}, hasGitDiff: async () => false,
+        collectJson: (map: typeof outputs, file: string, value: unknown) => map.set(path.resolve(file), JSON.stringify(value)),
+        createHistoryReader: () => ({ files: async (sha: string) => new Set(snapshots.find(item => item.reference.sha === sha)!.result.components.flatMap(item => [item.file, item.sourcefile])),
+            renames: async () => new Map() }) });
+    await reports.generateReports('fixture', snapshots[0], snapshots[1], outputs, snapshots);
+    await reports.generateComponentComparisonReports('fixture', snapshots, outputs);
+    const json = JSON.parse([...outputs.entries()].find(([file]) => file.endsWith('.json'))![1].toString());
+    assert.equal(json.added.length, 0);
+    assert.equal(json.removed.length, 0);
+    assert.equal(json.changed.length, 1);
+    assert.ok(json.changed[0].changeReasons.includes('pathCaseChanged'));
+    assert.equal(json.changed[0].historyMatch, 'caseOnlyRename');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(outputs.get(path.resolve('reports/fixture_component_comparison.xlsx')));
+    assert.equal(workbook.worksheets[0].rowCount, 2);
+    assert.equal(workbook.worksheets[0].getCell('A2').value, 'CopyString');
+    assert.match(workbook.worksheets[0].getCell('F2').value.hyperlink, /src\/copyString\/copyString.tsx$/);
+});
 
 test('une ligne par symbole, nom métier, tous les alias et barrels, analyses intactes (#16/#17)', () => {
     const raw = [component('Type', 'src/type.js', 'src/type.js', 'Type'),
