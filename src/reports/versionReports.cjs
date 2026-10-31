@@ -2,7 +2,8 @@ const path = require('node:path');
 const ExcelJS = require('exceljs');
 const { comparisonFileName } = require('../versionReferences.cjs');
 const { createGitHistoryReader } = require('./gitHistory.cjs');
-const { componentKey, normalizePath, compareComponents, buildComponentHistory, isTypescriptPathMigration } = require('./componentHistory.cjs');
+const { componentKey, normalizePath, compareComponents, buildComponentHistory, isTypescriptPathMigration, isTypescriptComponentMigration } = require('./componentHistory.cjs');
+const { groupReportComponents } = require('./reportComponents.cjs');
 
 function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, createHistoryReader = createGitHistoryReader }) {
   const contexts = new WeakMap();
@@ -36,9 +37,9 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
           if (index) renames.push(await reader.renames(snapshots[index - 1].reference.sha, snapshots[index].reference.sha));
         }
         const filtered = snapshots.map(snapshot => ({ ...snapshot, result: {
-          ...snapshot.result, components: snapshot.result.components.filter(included),
+          ...snapshot.result, components: groupReportComponents(snapshot.result.components.filter(included), CFG.preferredComponentNames?.[repoName]),
         } }));
-        return { ...buildComponentHistory(filtered, renames), snapshots, trees, renames, deltas: new Map() };
+        return { ...buildComponentHistory(filtered, renames, CFG.componentHistoryMappings?.[repoName]), snapshots, trees, renames, deltas: new Map() };
       })());
     }
     return contexts.get(snapshots);
@@ -79,6 +80,21 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
     return { file, url: `${CFG.githubBaseUrl}/${repoName}/blob/${encodeURIComponent(ref)}/${encodedPath}` };
   }
 
+  function exportLinks(repoName, ctx, component, targetIndex) {
+    return (component.exportFiles ?? [normalizePath(component.file)]).map(file => {
+      if (targetIndex !== undefined) return referenceFileLink(repoName, ctx, targetIndex, file);
+      const last = ctx.snapshots.length - 1;
+      if (ctx.trees[last].has(file)) return referenceFileLink(repoName, ctx, last, file);
+      for (let index = last; index >= 0; index--) {
+        if (ctx.snapshots[index].reference.kind === 'tag' && ctx.trees[index].has(file)) return referenceFileLink(repoName, ctx, index, file);
+      }
+      for (let index = last; index >= 0; index--) {
+        if (ctx.trees[index].has(file)) return referenceFileLink(repoName, ctx, index, file);
+      }
+      return { file, url: '' };
+    });
+  }
+
   async function delta(repoName, ctx, index) {
     if (ctx.deltas.has(index)) return ctx.deltas.get(index);
     const previous = ctx.maps[index - 1] ?? new Map();
@@ -92,10 +108,13 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
       if (!before) continue;
       const reasons = [];
       if (before.name !== current.name) reasons.push('nameChanged');
+      if (before.sourceExport !== current.sourceExport) reasons.push('sourceSymbolChanged');
+      if (JSON.stringify(before.publicNames) !== JSON.stringify(current.publicNames)) reasons.push('publicNamesChanged');
+      if (JSON.stringify(before.exportFiles) !== JSON.stringify(current.exportFiles)) reasons.push('exportFilesChanged');
       if (normalizePath(before.file) !== normalizePath(current.file)) reasons.push('exportMoved');
       if (normalizePath(before.sourcefile) !== normalizePath(current.sourcefile)) reasons.push('sourceMoved');
-      const typescriptMigration = before.sourceExport && before.sourceExport === current.sourceExport &&
-        (isTypescriptPathMigration(before.sourcefile, current.sourcefile) || isTypescriptPathMigration(before.file, current.file));
+      const typescriptMigration = isTypescriptComponentMigration(before, current) ||
+        (before.sourceExport && before.sourceExport === current.sourceExport && isTypescriptPathMigration(before.file, current.file));
       if (typescriptMigration) reasons.push('typescriptMigration');
       if (before.contentHash && current.contentHash && before.contentHash !== current.contentHash) reasons.push('diffContentHash');
       if (before.sourceAST && current.sourceAST && before.sourceAST !== current.sourceAST) reasons.push('diffAST');
@@ -105,15 +124,18 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
       }
       if (reasons.length) {
         const renamedSource = ctx.renames[index - 1]?.get(normalizePath(before.sourcefile)) === normalizePath(current.sourcefile);
-        const historyMatch = componentKey(before) === componentKey(current) ? 'sameIdentity'
+        const historyMatch = ctx.configuredMatches[index]?.has(componentKey(before)) ? 'configuredMapping'
+          : componentKey(before) === componentKey(current) ? 'sameIdentity'
           : renamedSource ? 'gitSourceRename'
           : typescriptMigration ? 'typescriptMigration'
           : normalizePath(before.sourcefile) === normalizePath(current.sourcefile) && before.sourceExport && before.sourceExport === current.sourceExport
             ? 'sameSourceSymbol'
             : ctx.renames[index - 1]?.get(normalizePath(before.file)) === normalizePath(current.file) && before.name === current.name
               ? 'gitExportRename' : 'identicalContent';
-        nextMap.set(key, { ...current, changeReasons: reasons, historyMatch, previous: {
+        const reviewRequired = ctx.configuredReviews[index]?.has(componentKey(before)) ?? false;
+        nextMap.set(key, { ...current, changeReasons: reasons, historyMatch, reviewRequired, previous: {
           id: componentKey(before), name: before.name, file: before.file, sourcefile: before.sourcefile,
+          sourceExport: before.sourceExport, publicNames: before.publicNames, exportFiles: before.exportFiles,
         } });
         changed.push(key);
       } else unchanged.push(key);
@@ -125,16 +147,17 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
 
   function pairTable(repoName, ctx, entries, targetIndex) {
     if (!entries.length) return '_Aucun_';
-    const rows = [['Nom', 'Previous Name', 'Visible Name', 'Reasons', 'History Match', 'Previous Export File', 'Previous Source File', 'Export File', 'Source File']];
+    const rows = [['Nom', 'Previous Name', 'Visible Name', 'Reasons', 'History Match', 'Previous Export File', 'Previous Source File', 'Export Files', 'Source File', 'Source Symbol', 'Public Names', 'Review']];
     for (const { component } of entries) {
-      const exported = referenceFileLink(repoName, ctx, targetIndex, component.file);
+      const exported = exportLinks(repoName, ctx, component, targetIndex);
       const source = referenceFileLink(repoName, ctx, targetIndex, component.sourcefile);
       const renderLink = entry => mdLink(path.posix.basename(entry.file), entry.url) || path.posix.basename(entry.file);
       rows.push([component.name, component.previous?.name !== component.name ? component.previous?.name ?? '' : '',
         component.visibleName ?? '', (component.changeReasons ?? []).join(', '), component.historyMatch ?? '',
         component.changeReasons?.includes('exportMoved') ? normalizePath(component.previous.file) : '',
         component.changeReasons?.includes('sourceMoved') ? normalizePath(component.previous.sourcefile) : '',
-        renderLink(exported), renderLink(source)]);
+        exported.map(renderLink).join('<br/>'), renderLink(source), component.sourceExport ?? '', component.publicNames.join(', '),
+        component.reviewRequired ? '⚠️ À vérifier' : '']);
     }
     return markdownTable(rows);
   }
@@ -174,7 +197,8 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
             const details = current.changeReasons.map(reason => reason === 'nameChanged'
               ? `nameChanged: ${current.previous.name} -> ${current.name}` : reason);
             if (current.historyMatch !== 'sameIdentity') details.push(current.historyMatch);
-            cell = `~\n${details.join('\n')}`;
+            if (current.reviewRequired) details.push('⚠️ À vérifier');
+            cell = `~\n${[...new Set(details)].join('\n')}`;
           } else cell = comparison.added.includes(key) ? '+' : '=';
           if (current.name !== latest(ctx.rows.get(key)).name) cell += `\nname: ${current.name}`;
         } else if (comparison.removed.includes(key)) cell = '-';
@@ -182,9 +206,13 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
       }
     }
     const headers = snapshots.map((snapshot, index) => `${snapshot.reference.label}${components.some(key => matrix.get(key)[index] === '-') ? ' 💥' : ''}`);
-    const columns = ['Component', 'Visible Name', 'Uses ForwardRef', 'Default Export', 'Export File', 'Source File', ...headers];
+    const columns = ['Component', 'Visible Name', 'Uses ForwardRef', 'Default Export', 'Export Files', 'Source File', 'Source Symbol', 'Public Names', ...headers];
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Component Comparison');
+    const exportSheet = workbook.addWorksheet('Export Files');
+    exportSheet.addRow(['Component', 'Version', 'Public Name', 'Source Symbol', 'Export File']);
+    const reviewSheet = workbook.addWorksheet('Historique à vérifier');
+    reviewSheet.addRow(['Component', 'From Version', 'To Version', 'Previous Source', 'Previous Symbol', 'Source', 'Symbol', 'Review']);
     sheet.addRow(columns);
     const markdownRows = [columns];
     const names = new Map();
@@ -195,15 +223,33 @@ function createVersionReports({ config: CFG, hasGitDiff, logDebug, collectJson, 
     const emoji = { '+': '🟢', '-': '🔴', '=': '⚪', '~': '🟡' };
     for (const key of components) {
       const data = latest(ctx.rows.get(key));
-      const name = `${data.name}${names.get(data.name.toLocaleLowerCase('fr')) > 1 ? ' ⚠️' : ''}`;
-      const exported = fileLink(repoName, ctx, key, 'file');
+      const needsReview = [...ctx.deltas.values()].some(comparison => comparison.nextMap.get(key)?.reviewRequired);
+      const name = `${data.name}${names.get(data.name.toLocaleLowerCase('fr')) > 1 || data.nameSelection === 'ambiguous' || needsReview ? ' ⚠️' : ''}`;
+      const exported = exportLinks(repoName, ctx, data);
       const source = fileLink(repoName, ctx, key, 'sourcefile');
       const label = file => CFG.markdownShowFullPathLabels ? file : path.posix.basename(file);
       const base = [name, data.visibleName ?? '', data.usesForwardRef ?? false, data.isDefaultExport ?? false];
-      sheet.addRow([...base, { text: label(exported.file), hyperlink: exported.url }, { text: label(source.file), hyperlink: source.url }, ...matrix.get(key)]);
-      markdownRows.push([...base, mdLink(label(exported.file), exported.url), mdLink(label(source.file), source.url),
+      sheet.addRow([...base, { text: exported.map(entry => label(entry.file)).join('\n'), hyperlink: exported.find(entry => entry.url)?.url ?? '' },
+        { text: label(source.file), hyperlink: source.url }, data.sourceExport ?? '', data.publicNames.join(', '), ...matrix.get(key)]);
+      markdownRows.push([...base, exported.map(entry => mdLink(label(entry.file), entry.url) || label(entry.file)).join('<br/>'),
+        mdLink(label(source.file), source.url), data.sourceExport ?? '', data.publicNames.join(', '),
         ...matrix.get(key).map(cell => cell ? `${emoji[cell[0]] ?? ''}${cell.includes('\n') ? ` ${cell.split('\n').slice(1).join(', ')}` : ''}` : '')]);
     }
+    snapshots.forEach((snapshot, index) => {
+      for (const component of ctx.maps[index].values()) {
+        for (const origin of component.exports) {
+          const link = referenceFileLink(repoName, ctx, index, origin.file);
+          exportSheet.addRow([component.name, snapshot.reference.label, origin.name, component.sourceExport ?? '',
+            link.url ? { text: link.file, hyperlink: link.url } : link.file]);
+        }
+      }
+      for (const component of ctx.deltas.get(index).nextMap.values()) {
+        if (component.reviewRequired) reviewSheet.addRow([component.name, snapshots[index - 1].reference.label, snapshot.reference.label,
+          normalizePath(component.previous.sourcefile), component.previous.sourceExport, normalizePath(component.sourcefile), component.sourceExport, '⚠️ À vérifier']);
+      }
+    });
+    exportSheet.columns.forEach(column => { column.width = 30; });
+    reviewSheet.columns.forEach(column => { column.width = 30; });
     sheet.columns.forEach(column => { column.width = 30; });
     outputs.set(path.resolve(CFG.reportsDir, `${repoName}_component_comparison.xlsx`), Buffer.from(await workbook.xlsx.writeBuffer()));
     outputs.set(path.resolve(CFG.reportsDir, `${repoName}_component_comparison.md`),

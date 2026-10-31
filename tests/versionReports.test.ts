@@ -61,7 +61,8 @@ test('migration JS vers TS : une ligne par export dans JSON, Markdown et Excel m
     ];
     const outputs = new Map<string, string | Buffer>();
     const reports = createVersionReports({
-        config: { tmpDir: '.', analysisDir: 'analyses', reportsDir: 'reports', githubBaseUrl: 'https://example.org' },
+        config: { tmpDir: '.', analysisDir: 'analyses', reportsDir: 'reports', githubBaseUrl: 'https://example.org',
+            preferredComponentNames: { fixture: { 'src/Button.jsx#default': 'Button', 'src/Button.tsx#default': 'Button' } } },
         logDebug: () => {}, hasGitDiff: async () => false,
         collectJson: (target: typeof outputs, file: string, value: unknown) => target.set(path.resolve(file), JSON.stringify(value)),
         createHistoryReader: () => ({ files: async (sha: string) => new Set(snapshots[sha === 'before' ? 0 : 1].result.components
@@ -72,7 +73,8 @@ test('migration JS vers TS : une ligne par export dans JSON, Markdown et Excel m
     const json = JSON.parse([...outputs.entries()].find(([file]) => file.endsWith('.json'))![1].toString());
     assert.equal(json.added.length, 0);
     assert.equal(json.removed.length, 0);
-    assert.equal(json.changed.length, 3);
+    assert.equal(json.changed.length, 1);
+    assert.equal(json.changed[0].exports.length, 3);
     for (const changed of json.changed) {
         assert.ok(changed.changeReasons.includes('typescriptMigration'));
         assert.ok(changed.changeReasons.includes('diffContentHash'));
@@ -86,9 +88,10 @@ test('migration JS vers TS : une ligne par export dans JSON, Markdown et Excel m
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(outputs.get(path.resolve('reports/fixture_component_comparison.xlsx')));
     const sheet = workbook.worksheets[0];
-    assert.equal(sheet.rowCount, 4);
+    assert.equal(sheet.rowCount, 2);
     assert.equal(sheet.getCell('A2').value, 'Button');
-    assert.match(sheet.getCell('H2').value, /^~\n.*typescriptMigration/s);
+    assert.match(sheet.getCell('J2').value, /^~\n.*typescriptMigration/s);
+    assert.equal(sheet.getCell('J2').value.split('typescriptMigration').length - 1, 1);
     assert.match(sheet.getCell('F2').value.hyperlink, /blob\/2.0.0\/src\/Button.tsx/);
 });
 
@@ -134,16 +137,16 @@ test('une source R100 exportée directement et par un barrel conserve les deux h
     const json = JSON.parse([...outputs.entries()].find(([file]) => file.endsWith('.json'))![1].toString());
     assert.equal(json.added.length, 0);
     assert.equal(json.removed.length, 0);
-    assert.deepEqual(json.changed.map((item: {name: string}) => item.name), ['PersonnePhysiquePhoneType', 'Type']);
+    assert.deepEqual(json.changed.map((item: {name: string}) => item.name), ['PersonnePhysiquePhoneType']);
+    assert.deepEqual(json.changed[0].publicNames, ['PersonnePhysiquePhoneType', 'Type']);
     assert.ok(json.changed.every((item: {historyMatch: string}) => item.historyMatch === 'gitSourceRename'));
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(outputs.get(path.resolve('reports/fixture_component_comparison.xlsx')));
     const sheet = workbook.worksheets[0];
-    assert.equal(sheet.rowCount, 3);
+    assert.equal(sheet.rowCount, 2);
     assert.equal(sheet.getCell('A2').value, 'PersonnePhysiquePhoneType');
-    assert.equal(sheet.getCell('A3').value, 'Type');
-    assert.match(sheet.getCell('H2').value, /^~\n/);
-    assert.match(sheet.getCell('H3').value, /^~\n/);
+    assert.equal(sheet.getCell('G2').value, 'Type');
+    assert.match(sheet.getCell('J2').value, /^~\n/);
 });
 
 test('rapports : tri naturel visible, historique unique, liens nommés et repli indépendant sur les tags', async () => {
