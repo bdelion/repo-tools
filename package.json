@@ -10,6 +10,7 @@
     "generate-component-dependency-graph": "ts-node src/generate-component-dependency-graph.ts",
     "analyse-component-versions": "node src/analyse-component-versions.js",
     "history:propose": "node src/commands/component-history-mappings.cjs",
+    "history:export": "node src/commands/component-history-export.cjs",
     "scan-ghe": "node src/scan-ghe.js",
     "graph:analyze": "ts-node src/commands/analyze-graph.ts",
     "graph:required": "ts-node src/commands/required-components.ts",
