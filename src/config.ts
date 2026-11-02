@@ -5,7 +5,7 @@
  * OUTPUT_TGF_PATH : chemin du fichier TGF généré
  */
 
-export const SCAN_PATH = '/workspaces/github/repo/repo-react/src';
-export const ORIGIN_PATH = '/workspaces/github/repo/repo-react/src/';
-export const OUTPUT_TGF_PATH = 'graphe/repo-react-component-dependency-graph.tgf';
-export const OUTPUT_GRAPHE_DIR = 'repo-react';
+export const SCAN_PATH = '/workspaces/github/ecaille/ecaille-react/src';
+export const ORIGIN_PATH = '/workspaces/github/ecaille/ecaille-react/src/';
+export const OUTPUT_TGF_PATH = 'graphe/ecaille-react-component-dependency-graph.tgf';
+export const OUTPUT_GRAPHE_DIR = 'ecaille-react';

@@ -48,14 +48,14 @@ npx madge src --dot > reports/graph.dot
 
 1. Pour générer le graphe, exécuter la commande :
     ```bash
-    npm start -- -p /c/workspaces/github/repo/repo-react -t d3
+    npm start -- -p /c/workspaces/github/ecaille/ecaille-react -t d3
     ```
     qui retourne :
     ```bash
-    > repo-tools-npm-init@1.0.0 start
-    > ts-node src/index.ts -p C:/workspaces/github/repo/repo-react -t d3
+    > ecaille-tools-npm-init@1.0.0 start
+    > ts-node src/index.ts -p C:/workspaces/github/ecaille/ecaille-react -t d3
 
-    Analyse du projet à : C:/workspaces/github/repo/repo-react
+    Analyse du projet à : C:/workspaces/github/ecaille/ecaille-react
     Génération du graphe D3...
     Données de graphe générées dans graph-data.json
     ```
@@ -97,14 +97,14 @@ npx madge src --dot > reports/graph.dot
 
 1. Pour générer le fichier `graphml`, exécuter la commande :
     ```bash
-    npm start -- -p /c/workspaces/github/repo/repo-react -t grapml
+    npm start -- -p /c/workspaces/github/ecaille/ecaille-react -t grapml
     ```
     qui retourne :
     ```bash
-    > repo-tools-npm-init@1.0.0 start
-    > ts-node src/index.ts -p C:/workspaces/github/repo/repo-react -t graphml
+    > ecaille-tools-npm-init@1.0.0 start
+    > ts-node src/index.ts -p C:/workspaces/github/ecaille/ecaille-react -t graphml
 
-    Analyse du projet à : C:/workspaces/github/repo/repo-react
+    Analyse du projet à : C:/workspaces/github/ecaille/ecaille-react
     Génération du fichier GraphML...
     Données de graphe générées dans graphe/graph-data.graphml
     ```

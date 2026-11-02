@@ -1,12 +1,12 @@
 {
     "repos": [
         {
-            "name": "repo-react",
-            "url": "git@github.enterprise.io:commons/repo-react.git"
+            "name": "ecaille-react",
+            "url": "git@github.enterprise.io:commons/ecaille-react.git"
         },
         {
-            "name": "repo-react-enterprise",
-            "url": "git@github.enterprise.io:commons/repo-react-enterprise.git"
+            "name": "ecaille-react-enterprise",
+            "url": "git@github.enterprise.io:commons/ecaille-react-enterprise.git"
         },
         {
             "name": "enterprise-assets",
@@ -21,7 +21,7 @@
     "gitDiffCachePath": "./analyses/git_diff_cache.json",
     "srcDir": "src",
     "componentHistoryMappings": {
-        "repo-react": [
+        "ecaille-react": [
             {
                 "from": {
                     "version": "0.0.1",
@@ -58,6 +58,372 @@
                     "version": "1.6.0",
                     "sourcefile": "src/commons/constants.ts",
                     "sourceExport": "AnchorPosition"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/Form.js",
+                    "sourceExport": "Form"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/forms/Form/Form.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/FormFragment.jsx",
+                    "sourceExport": "FormFragment"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/formFragments/FormFragment/FormFragment.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/FormLabel.jsx",
+                    "sourceExport": "FormLabel"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/formElements/FormLabel/FormLabel.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/MoneyFormFragment.jsx",
+                    "sourceExport": "MoneyFormFragment"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/formFragments/MoneyFormFragment/MoneyFormFragment.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/NumberFormFragment.jsx",
+                    "sourceExport": "NumberFormFragment"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/formFragments/NumberFormFragment/NumberFormFragment.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/use-active-element.js",
+                    "sourceExport": "useActiveElement"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/hooks/use-active-element.js",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/use-focus.js",
+                    "sourceExport": "useFocus"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/hooks/use-focus.js",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/use-switch.js",
+                    "sourceExport": "useSwitch"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/hooks/use-switch.js",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/use-validated-state.js",
+                    "sourceExport": "useValidatedState"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/hooks/use-validated-state.js",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/WizardForm.js",
+                    "sourceExport": "HeadlinedWizardForm"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/forms/HeadlinedWizardForm/HeadlinedWizardForm.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/WizardForm.js",
+                    "sourceExport": "NumberedWizardForm"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/forms/NumberedWizardForm/NumberedWizardForm.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/WizardForm.js",
+                    "sourceExport": "WizardForm"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/forms/WizardForm/WizardForm.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/FastForm/WizardForm.js",
+                    "sourceExport": "WizardFormStep"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/forms/WizardFormStep/WizardFormStep.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/form/input/NumberInput.jsx",
+                    "sourceExport": "NumberInput"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/formElements/NumberInput/NumberInput.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/tag/tag/tag.jsx",
+                    "sourceExport": "default"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/tag/tag.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.0.1",
+                    "sourcefile": "src/components/tooltips/confirmationTooltip/confTooltipContent/confTooltipContent.jsx",
+                    "sourceExport": "default"
+                },
+                "to": {
+                    "version": "0.0.2",
+                    "sourcefile": "src/components/tooltips/confirmationTooltip/confirmationTooltip.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "1.0.1",
+                    "sourcefile": "src/components/pagination/hooks/useServerPagination.js",
+                    "sourceExport": "default"
+                },
+                "to": {
+                    "version": "1.1.0",
+                    "sourcefile": "src/hooks/useServerPagination.js",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "1.2.3",
+                    "sourcefile": "src/components/formElements/switch/switch.jsx",
+                    "sourceExport": "default"
+                },
+                "to": {
+                    "version": "1.3.0",
+                    "sourcefile": "src/components/buttons/switch/switch.jsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "1.5.4",
+                    "sourcefile": "src/components/formElements/comboBox/constant.js",
+                    "sourceExport": "OptionPosition"
+                },
+                "to": {
+                    "version": "1.6.0",
+                    "sourcefile": "src/components/formElements/comboBox/optionPosition.ts",
+                    "sourceExport": "OptionPosition"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "1.6.3",
+                    "sourcefile": "src/contexts/notifications/notificationContext/notificationContext.ts",
+                    "sourceExport": "default"
+                },
+                "to": {
+                    "version": "1.7.0",
+                    "sourcefile": "src/contexts/notifications/notificationContext/notificationContext.ts",
+                    "sourceExport": "useNotify"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "1.7.1",
+                    "sourcefile": "src/components/buttons/CopyString/CopyString.tsx",
+                    "sourceExport": "default"
+                },
+                "to": {
+                    "version": "1.8.0",
+                    "sourcefile": "src/components/buttons/copyString/copyString.tsx",
+                    "sourceExport": "default"
+                },
+                "reviewRequired": true
+            }
+        ],
+        "ecaille-react-enterprise": [
+            {
+                "from": {
+                    "version": "0.2.0",
+                    "sourcefile": "src/utils/validation.js",
+                    "sourceExport": "deepEquals"
+                },
+                "to": {
+                    "version": "0.3.0",
+                    "sourcefile": "src/validations/deepEquals.js",
+                    "sourceExport": "deepEquals"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.2.0",
+                    "sourcefile": "src/utils/validation.js",
+                    "sourceExport": "isCharNumber"
+                },
+                "to": {
+                    "version": "0.3.0",
+                    "sourcefile": "src/validations/isCharNumber.js",
+                    "sourceExport": "isCharNumber"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.2.0",
+                    "sourcefile": "src/utils/validation.js",
+                    "sourceExport": "isDefined"
+                },
+                "to": {
+                    "version": "0.3.0",
+                    "sourcefile": "src/validations/isDefined.js",
+                    "sourceExport": "isDefined"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.2.0",
+                    "sourcefile": "src/utils/validation.js",
+                    "sourceExport": "isEmpty"
+                },
+                "to": {
+                    "version": "0.3.0",
+                    "sourcefile": "src/validations/isEmpty.js",
+                    "sourceExport": "isEmpty"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.2.0",
+                    "sourcefile": "src/utils/validation.js",
+                    "sourceExport": "nonDefined"
+                },
+                "to": {
+                    "version": "0.3.0",
+                    "sourcefile": "src/validations/nonDefined.js",
+                    "sourceExport": "nonDefined"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.2.0",
+                    "sourcefile": "src/utils/validation.js",
+                    "sourceExport": "nonEmpty"
+                },
+                "to": {
+                    "version": "0.3.0",
+                    "sourcefile": "src/validations/nonEmpty.js",
+                    "sourceExport": "nonEmpty"
+                },
+                "reviewRequired": true
+            },
+            {
+                "from": {
+                    "version": "0.3.0",
+                    "sourcefile": "src/characters/findFilaireFragment/status.js",
+                    "sourceExport": "Status"
+                },
+                "to": {
+                    "version": "0.4.0",
+                    "sourcefile": "src/characters/characterStatus/characterStatus.js",
+                    "sourceExport": "CharacterStatus"
                 },
                 "reviewRequired": true
             }
@@ -99,7 +465,7 @@
     "tagMin": null,
     "tagMax": null,
     "parallel": 4,
-    "debug": false,
+    "debug": true,
     "markdownShowFullPathLabels": true,
     "markdownCompactTables": true,
     "markdownDropEmptyColumns": true

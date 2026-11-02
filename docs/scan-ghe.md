@@ -59,7 +59,7 @@ export INCLUDE_USER_REPOS="false"       # inclure repos utilisateur (true par d�
 export SCAN_BRANCH=""                   # optionnel (sinon default_branch)
 
 # Filtrage du CONTENU (sortie)
-export INCLUDE_ONLY_LIBS='@repo/*,lodash,org.acme:security'
+export INCLUDE_ONLY_LIBS='@ecaille/*,lodash,org.acme:security'
 export LIBS_FILE='./libs.txt'           # optionnel (un motif par ligne)
 export LIBS_MATCH_SCOPE='projects'      # 'projects' | 'dependencies' | 'both'
 export LIBS_CASE_INSENSITIVE='false'
@@ -97,7 +97,7 @@ export SORT_CASE_INSENSITIVE="true"
 --out ./out/dependencies-report.md      # fichier Markdown
 
 # Filtres
---libs "@repo/*,react,org.slf4j:slf4j-api"
+--libs "@ecaille/*,react,org.slf4j:slf4j-api"
 --libs-file ./libs.txt
 --orgs "org1,org2"
 --repos "org1/repoA,org2/repoB"
@@ -159,7 +159,7 @@ Artefacts produits:
 
 1. Scan complet + pré‑filtrage tree
 ```bash
-export INCLUDE_ONLY_LIBS='@repo/*,org.slf4j:slf4j-api,lodash'
+export INCLUDE_ONLY_LIBS='@ecaille/*,org.slf4j:slf4j-api,lodash'
 export PREFILTER_MODE='tree'
 npm run scan-ghe
 ```
@@ -174,7 +174,7 @@ python generate_deps_report.py \
   --title "Etat des dépendances — $(date +%d/%m/%Y)"
 ```
 
-#### Etat des lieux libs repos
+#### Etat des lieux libs Repos
 
 1. Mettre en place le fichier `.env` de configuration suivant
 ```bash
@@ -192,7 +192,7 @@ START_ORGS=""
 export EXCLUDE_DIRS="node_modules/**,dist/**,build/**,.github/**,**/test/**"
 
 # --- Motif de la lib Node (package name exact) ---
-INCLUDE_ONLY_LIBS='repo-react,repo-react-enterprise,enterprise-assets'
+INCLUDE_ONLY_LIBS='ecaille-react,ecaille-react-enterprise,enterprise-assets'
 LIBS_MATCH_SCOPE='both'
 
 # --- Réglages Code Search (Node/JS) ---
@@ -204,9 +204,9 @@ CODESRCH_INCLUDE_GRADLE=false
 OUTPUT_DIR=reports
 OUTPUT_JSON_ENABLED=true
 OUTPUT_XLSX_ENABLED=true
-OUTPUT_JSON_PROJECTS_FILENAME=library-repo-projects.json
-OUTPUT_JSON_DEPENDENCIES_FILENAME=library-repo-dependencies.json
-OUTPUT_XLSX_FILENAME=library-repo-scan.xlsx
+OUTPUT_JSON_PROJECTS_FILENAME=library-ecaille-projects.json
+OUTPUT_JSON_DEPENDENCIES_FILENAME=library-ecaille-dependencies.json
+OUTPUT_XLSX_FILENAME=library-ecaille-scan.xlsx
 ```
 2. Scan complet + pré‑filtrage tree
 ```bash
@@ -216,8 +216,8 @@ npm run scan-ghe
 ```bash
 python src/generate_deps_report.py \
   --no-perlib-include-zero-line \
-  --in ./reports/library-repo-dependencies.json \
-  --out ./reports/library-repo-dependencies-report.md \
+  --in ./reports/library-ecaille-dependencies.json \
+  --out ./reports/library-ecaille-dependencies-report.md \
   --title "Etat des dépendances - $(date +%d/%m/%Y)"
 ```
 
