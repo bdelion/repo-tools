@@ -11,7 +11,9 @@ import { nodesFiltered } from './graph/nodeManager';
 import { dependenciesFiltered } from './graph/dependencyManager';
 import { ORIGIN_PATH, SCAN_PATH, OUTPUT_TGF_PATH } from './config';
 
-scanDirectory(SCAN_PATH, ORIGIN_PATH);
+const args = process.argv.slice(2);
+if (args.some(arg => arg !== '--detailed')) throw new Error('Usage : npm run generate-component-dependency-graph -- [--detailed]');
+scanDirectory(SCAN_PATH, ORIGIN_PATH, args.includes('--detailed') ? 'detailed' : 'components');
 
 createRecursivedTGF();
 

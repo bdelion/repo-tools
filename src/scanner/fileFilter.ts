@@ -37,7 +37,7 @@ export function isHooks(filePath: string): boolean {
  */
 export function isFilteredNode(filePath: string): boolean {
     const patterns = [
-        /\.test\./, /\.spec\./, /__tests__/, /assets/, /styles/, /\.css$/, /\.scss$/, /\.less$/, /\.sass$/,
+        /\.test\./, /\.spec\./, /__tests__/, /styles/, /\.css$/, /\.scss$/, /\.less$/, /\.sass$/,
         /\.png$/, /\.jpg$/, /\.jpeg$/, /\.gif$/, /\.svg$/, /\.ico$/
     ];
     return patterns.some(pattern => pattern.test(filePath));

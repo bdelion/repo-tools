@@ -3,7 +3,7 @@ import path from 'node:path';
 import { shouldProcessFile, isJSXFile, isFilteredNode } from './fileFilter';
 import { processFiles } from '../parser/extractMetadata';
 
-export function scanDirectory(directory: string, origin: string): void {
+export function scanDirectory(directory: string, origin: string, view: 'components' | 'detailed' = 'components'): void {
     const pending = [directory];
     const files: string[] = [];
     while (pending.length) {
@@ -18,5 +18,5 @@ export function scanDirectory(directory: string, origin: string): void {
             }
         }
     }
-    processFiles(files.sort(), origin);
+    processFiles(files.sort(), origin, view);
 }

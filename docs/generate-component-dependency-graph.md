@@ -32,9 +32,36 @@
 
 Dans le fichier TGF, les nœuds sont triés par identifiant et les liens par source, puis par cible, dans l’ordre alphanumérique naturel (`Component2` avant `Component10`).
 
+La vue par défaut représente les implémentations : les imports à travers des
+réexports sont reliés directement au fichier qui définit le symbole. Les alias
+de réexport ne créent donc pas de nœuds supplémentaires et les composants
+homonymes définis dans des fichiers différents restent distincts.
+
+Pour examiner les chemins de réexport et les fichiers `index.*`, utiliser la vue
+détaillée (elle écrit au même `OUTPUT_TGF_PATH` que la vue par défaut) :
+
+```bash
+npm run generate-component-dependency-graph -- --detailed
+```
+
+Dans cette vue, chaque réexport dépend uniquement du symbole qu’il expose.
+Un fichier réexportant 43 symboles ne crée plus 43 × 43 liens de réexport.
+Régénérer les métadonnées avec `graph:analyze` après avoir changé de vue.
+
 L’identité d’un composant repose désormais sur son chemin et son export ; les
 imports sont résolus via AST et configuration TypeScript. Régénérer le TGF et ses
 métadonnées après migration. Voir [identifiants, résolution et limites](reliability.md).
+
+`ORIGIN_PATH` définit le périmètre des sources du graphe. Les imports résolus en
+dehors de ce dossier (par exemple `../tools/tests/isFullySelected`) sont ignorés,
+y compris à travers les réexports. Les imports locaux introuvables restent des
+erreurs. Pour inclure des sources situées dans des dossiers voisins, élargir
+`ORIGIN_PATH` à leur dossier parent commun ; cela modifie les identifiants relatifs
+et nécessite de régénérer le graphe et ses métadonnées.
+
+Les fichiers de code placés dans `assets` sont analysés : ce dossier peut contenir
+des composants React comme `assets/svg/svg.tsx`. Les ressources `.svg`, images et
+feuilles de style restent exclues du graphe.
 
 ### Graphe statique (image ou DOT)
 
