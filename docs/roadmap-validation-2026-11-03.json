@@ -66,6 +66,13 @@
         ],
         "fail": "Refuser si un élément privé apparaît comme public, si un composant public manque sans explication, si les résultats se contredisent ou si les configurations doivent être devinées.",
         "outside": "Pas de chiffrage en jours ; pas de réécriture générale de la bibliothèque."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-28.md",
+        "command": "npm.cmd run validate:issue-28",
+        "configuration": "config/validation/issue-28/",
+        "outputs": "reports/validation/issue-28/",
+        "status": "Demonstrateur livre : 8 controles PASS. Recette sur bibliotheque reelle encore a preparer."
       }
     },
     {

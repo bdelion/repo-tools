@@ -1,5 +1,11 @@
 # Valider les évolutions sans connaître le code
 
+**Commencer ici :** [l'exercice prêt à exécuter de l'issue #28](recette/issue-28.md).
+La bibliothèque témoin, les trois configurations et la commande
+`npm.cmd run validate:issue-28` sont maintenant livrées. Le guide indique les
+fichiers précis et les contenus attendus. Cela ne clôture pas la recette réelle.
+Les issues #29 à #37 restent du travail à préparer avant de demander une validation.
+
 Les issues [#28 à #37](https://github.com/bdelion/repo-tools/issues/38) sont des
 travaux à réaliser, pas une demande de tester immédiatement des fonctionnalités
 qui seraient toutes terminées. L'issue #38 sert de tableau de suivi.
@@ -23,7 +29,8 @@ et dépendances. Elle ne signifie pas que le développement est déjà terminé.
 **Prêt à valider** signifie que le développeur a livré un guide de recette, les
 fichiers à ouvrir, les commandes remplies et une comparaison attendu/obtenu.
 Il doit créer `docs/recette/issue-N.md` pour son ticket ; ces guides ne sont pas
-encore livrés par le présent document. Si le dossier manque, noter « non prêt
+encore tous livrés : #28 possède désormais un exercice témoin, les autres restent
+à produire. Si le dossier manque, noter « non prêt
 à valider » et demander de le compléter, sans deviner les résultats.
 
 **Definition of Done (DoD)** signifie « le travail et sa validation sont terminés » :

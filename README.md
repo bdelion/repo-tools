@@ -1,5 +1,9 @@
 # RepoTools for ENTERPRISE
 
+**Premier exercice sans configuration à remplir :** `npm.cmd run validate:issue-28`.
+Voir [les commandes et les fichiers exacts à contrôler](docs/recette/issue-28.md).
+Cet exercice utilise une bibliothèque témoin fournie dans le dépôt, sans accès GHES.
+
 Pour analyser vos bibliothèques JavaScript/TypeScript, consulter le
 [guide des vues UI publique, API publique et dépendances](docs/library-views.md).
 La commande `generate-component-dependency-graph` reste disponible ; `graph:generate`

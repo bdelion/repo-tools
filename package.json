@@ -18,7 +18,8 @@
     "graph:required": "ts-node src/commands/required-components.ts",
     "graph:required-by-name": "ts-node src/commands/required-components-by-name.ts",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run lint && npm test"
+    "check": "npm run typecheck && npm run lint && npm test",
+    "validate:issue-28": "node scripts/validate-issue-28.cjs"
   },
   "repository": {
     "type": "git",
