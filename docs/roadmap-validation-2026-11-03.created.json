@@ -1,0 +1,71 @@
+{
+  "repository": "bdelion/repo-tools",
+  "baseCommit": "a62076dca335b164717fcf83b870ae512cd1ac76",
+  "issues": [
+    {
+      "key": "views",
+      "number": 28,
+      "title": "[P1] Configurer et valider les trois vues sur une bibliothèque réelle JS/TS",
+      "url": "https://github.com/bdelion/repo-tools/issues/28"
+    },
+    {
+      "key": "branch",
+      "number": 29,
+      "title": "[P1] scan-ghe : traiter SCAN_BRANCH vide comme la branche par défaut",
+      "url": "https://github.com/bdelion/repo-tools/issues/29"
+    },
+    {
+      "key": "errors",
+      "number": 30,
+      "title": "[P1] scan-ghe : distinguer résultat vide, scan incomplet et échec API",
+      "url": "https://github.com/bdelion/repo-tools/issues/30"
+    },
+    {
+      "key": "scan-tests",
+      "number": 31,
+      "title": "[P1] Automatiser les tests hors ligne de scan-ghe et de ses exports",
+      "url": "https://github.com/bdelion/repo-tools/issues/31"
+    },
+    {
+      "key": "python",
+      "number": 32,
+      "title": "[P1] Configurer Python et tester generate_deps_report sur les JSON du scanner",
+      "url": "https://github.com/bdelion/repo-tools/issues/32"
+    },
+    {
+      "key": "ci",
+      "number": 33,
+      "title": "[P1] Isoler les références et fiabiliser la validation Node/Python et Jenkins",
+      "url": "https://github.com/bdelion/repo-tools/issues/33"
+    },
+    {
+      "key": "ghes",
+      "number": 34,
+      "title": "[P2] Valider le parcours GHES réel vers les rapports JSON, Excel et Markdown",
+      "url": "https://github.com/bdelion/repo-tools/issues/34"
+    },
+    {
+      "key": "docs",
+      "number": 35,
+      "title": "[P2] Unifier la documentation et vérifier les exemples de commandes",
+      "url": "https://github.com/bdelion/repo-tools/issues/35"
+    },
+    {
+      "key": "isolation",
+      "number": 36,
+      "title": "[P2] Séparer les moteurs graphes/versions et stabiliser leurs contrats de données",
+      "url": "https://github.com/bdelion/repo-tools/issues/36"
+    },
+    {
+      "key": "cleanup",
+      "number": 37,
+      "title": "[P3] Auditer les dépendances et retirer progressivement le code obsolète",
+      "url": "https://github.com/bdelion/repo-tools/issues/37"
+    }
+  ],
+  "tracker": {
+    "number": 38,
+    "title": "[Suivi] Consolider les configurations, tests et usages de repo-tools",
+    "url": "https://github.com/bdelion/repo-tools/issues/38"
+  }
+}

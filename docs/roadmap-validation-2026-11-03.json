@@ -1,0 +1,272 @@
+{
+  "repository": "bdelion/repo-tools",
+  "baseCommit": "a62076dca335b164717fcf83b870ae512cd1ac76",
+  "branch": "feature/reprise-original-script",
+  "tasks": [
+    {
+      "key": "views",
+      "title": "[P1] Configurer et valider les trois vues sur une bibliothèque réelle JS/TS",
+      "dependencies": [],
+      "context": "Les nouvelles vues ont des tests automatisés, mais leur périmètre doit être vérifié sur une bibliothèque réelle et un catalogue attendu validé avec les utilisateurs.",
+      "scope": [
+        "Déclarer chaque entrée publique source et une destination distincte par vue.",
+        "Valider public-ui, public-api et dependencies avec et sans React.",
+        "Vérifier les alias, homonymes, wrappers UI, ressources, types, helpers privés et réexports mixtes JS/TS.",
+        "Tester deux sélections de prérequis et d'impact, puis le plan feuilles d'abord."
+      ],
+      "ready": [
+        "Bibliothèque accessible et SHA de référence identifiés.",
+        "Entrées publiques confirmées et petit catalogue attendu convenu avec le référent métier.",
+        "Fixture anonymisée prévue si les sources ne sont pas partageables."
+      ],
+      "done": [
+        "Configurations reproductibles documentées et sans secrets.",
+        "Catalogue client correct, types exclus de l'UI et helpers privés absents de l'API publique.",
+        "Alias sans double comptage et tri naturel vérifié : Component2 avant Component10 ; arcs par source puis cible.",
+        "Liste, TGF, JSON et Markdown cohérents ; impact/prérequis et cycles vérifiés sur les cas choisis.",
+        "Commandes, SHA, compteurs et résultats anonymisés joints ; écarts avec master-script expliqués.",
+        "Toute correction a un test de non-régression et npm run check réussit."
+      ]
+    },
+    {
+      "key": "branch",
+      "title": "[P1] scan-ghe : traiter SCAN_BRANCH vide comme la branche par défaut",
+      "dependencies": [],
+      "context": "Défaut reproduit localement et déjà présent dans master-script : SCAN_BRANCH=\"\" est utilisé avec ??, conduit à un appel de branche invalide et peut produire un inventaire vide avec succès.",
+      "scope": [
+        "Normaliser les valeurs absente, vide et espaces.",
+        "Conserver la priorité d'une branche explicite et le repli sur default_branch, puis main.",
+        "Ne pas changer les filtres de bibliothèques."
+      ],
+      "ready": [
+        "Fixture API locale avec default_branch=main disponible.",
+        "Attendus écrits pour variable absente, vide, espaces et branche explicite différente.",
+        "Test exécuté dans un dossier temporaire, faux token et aucun chargement du .env réel."
+      ],
+      "done": [
+        "Chaque variante choisit la bonne branche et le bon SHA.",
+        "Test automatisé vérifiant appels API, JSON, Excel et code de sortie.",
+        "Colonnes JSON et feuilles Excel du cas nominal préservées.",
+        "Documentation et npm run check à jour."
+      ]
+    },
+    {
+      "key": "errors",
+      "title": "[P1] scan-ghe : distinguer résultat vide, scan incomplet et échec API",
+      "dependencies": [],
+      "context": "Une réponse 403 à la découverte est absorbée et peut produire des fichiers vides avec un code 0. Les erreurs par dépôt ne donnent pas de bilan global fiable.",
+      "scope": [
+        "Définir la politique d'erreurs et de publication partielle.",
+        "Produire un bilan machine lisible des dépôts découverts, analysés, ignorés et échoués.",
+        "Protéger les rapports précédents d'un remplacement silencieux par un scan échoué."
+      ],
+      "ready": [
+        "Cas attendus validés : zéro résultat légitime, filtre sans correspondance, échec découverte et erreur sur un dépôt.",
+        "Politique de publication partielle et codes de sortie décidés.",
+        "Fixtures disponibles pour 401/403/404/429/5xx sans API réelle et avec retries bornés."
+      ],
+      "done": [
+        "Une erreur API inattendue n'est plus transformée silencieusement en liste vide.",
+        "Bilan des résultats et des erreurs exploitable dans les logs et en JSON, sans secrets.",
+        "Un scan incomplet/échoué a un code non nul ; le vide légitime reste distinct.",
+        "Politique de conservation/publication partielle appliquée et testée ; JSON et Excel cohérents.",
+        "Tests automatisés, documentation et npm run check réussis."
+      ]
+    },
+    {
+      "key": "scan-tests",
+      "title": "[P1] Automatiser les tests hors ligne de scan-ghe et de ses exports",
+      "dependencies": [
+        "branch",
+        "errors"
+      ],
+      "context": "Un test manuel local a validé un package npm et package-lock v3, mais il n'existe pas encore de suite de contrats couvrant les parcours scanner.",
+      "scope": [
+        "Créer un serveur GHES simulé et des fixtures anonymes.",
+        "Couvrir progressivement npm/lockfile, workspace JS, Maven et Gradle.",
+        "Couvrir pagination, filtres, préfiltrage, exclusions, branche/SHA et erreurs API.",
+        "Valider le schéma dependencies.json destiné au script Python et relire l'Excel produit."
+      ],
+      "ready": [
+        "Corrections de branche et politique d'erreurs disponibles.",
+        "Matrice des scénarios et attendus de chaque fixture écrits.",
+        "Contraintes d'isolation réseau et variables d'environnement définies."
+      ],
+      "done": [
+        "Tests sans réseau externe ni identifiants réels, intégrés à la commande de tests.",
+        "Au moins un cas nominal par écosystème retenu et des cas négatifs utiles.",
+        "Pagination multi-pages et réponse 403 vérifiées ; pas de succès trompeur.",
+        "Exports JSON/Excel relus avec les mêmes lignes, branches et SHA attendus.",
+        "Fixtures et compteurs documentés ; npm run check réussi."
+      ]
+    },
+    {
+      "key": "python",
+      "title": "[P1] Configurer Python et tester generate_deps_report sur les JSON du scanner",
+      "dependencies": [],
+      "context": "Le script Python est identique à la référence, mais n'a pas pu être exécuté ici : seuls des alias WindowsApps inutilisables ont été trouvés. Le code peut convertir une erreur JSON en rapport vide avec succès.",
+      "scope": [
+        "Définir et documenter un interpréteur Python supporté sous Windows et en CI.",
+        "Créer des fixtures reprenant exactement les champs de scan-ghe.",
+        "Tester JSON, JSONL/NDJSON, gzip, objet contenant une liste, filtres et sections.",
+        "Faire échouer les entrées invalides et distinguer un filtre sans résultat d'une erreur de lecture."
+      ],
+      "ready": [
+        "Interpréteur réel disponible avec version et commande explicites ; pas seulement un alias WindowsApps.",
+        "Fixtures scanner nominales et invalides prêtes, sans données confidentielles.",
+        "Attendus définis pour préreleases, versions non résolues et plages déclarées."
+      ],
+      "done": [
+        "--help et génération Markdown exécutés sur un interpréteur supporté.",
+        "Tests Python automatisés couvrant formats, filtres et au moins un rapport représentatif.",
+        "Entrées corrompues signalées avec code non nul ; pas de rapport de succès vide trompeur.",
+        "Totaux, tableaux et diagrammes cohérents avec les fixtures ; règles d'approximation des plages documentées.",
+        "Chemin python src/generate_deps_report.py et procédure de tests documentés.",
+        "Commande de tests utilisable dans la future étape CI Python."
+      ]
+    },
+    {
+      "key": "ci",
+      "title": "[P1] Isoler les références et fiabiliser la validation Node/Python et Jenkins",
+      "dependencies": [
+        "python"
+      ],
+      "context": "Le lint exclut logs, mais TypeScript y inclut encore 48 fichiers de référence. Jenkinsfile déclare deux fois nodeLintStage dans le même bloc. La CI actuelle ne valide pas le rapport Python.",
+      "scope": [
+        "Limiter le typage aux sources et tests actifs sans modifier les copies de référence.",
+        "Clarifier les étapes Jenkins et éviter les doubles déclarations/validations redondantes.",
+        "Ajouter une étape Python dédiée et garder la matrice Node 22/24.",
+        "Documenter ce qui est validé localement et ce qui nécessite la bibliothèque Jenkins externe."
+      ],
+      "ready": [
+        "Commande de tests Python et version supportée définies.",
+        "Périmètre TypeScript actif listé.",
+        "Accès au pipeline Jenkins ou procédure de validation convenue avec son responsable."
+      ],
+      "done": [
+        "Aucun fichier sous logs n'apparaît dans tsc --listFilesOnly ; sources/tests actifs restent vérifiés.",
+        "Lint et lint:fix ne ciblent pas les références.",
+        "Jenkinsfile sans double déclaration, exécuté dans le contexte prévu ou preuve externe jointe.",
+        "CI Node et Python réussie sur les versions annoncées ; dépendances installées via lockfile.",
+        "Aucun test externe requis pour la validation locale standard ; procédures explicites.",
+        "npm run check réussi et logs de CI liés à l'issue."
+      ]
+    },
+    {
+      "key": "ghes",
+      "title": "[P2] Valider le parcours GHES réel vers les rapports JSON, Excel et Markdown",
+      "dependencies": [
+        "branch",
+        "errors",
+        "scan-tests",
+        "python",
+        "ci"
+      ],
+      "context": "La simulation locale ne valide ni les droits GHES, ni Code Search, ni les cas réels des workspaces, Maven et Gradle.",
+      "scope": [
+        "Préparer un périmètre de recette limité et des configurations reproductibles sans token versionné.",
+        "Exécuter successivement prefilter off, tree, puis code sur des dépôts connus.",
+        "Comparer manifests/lockfiles et résultats JSON/Excel/Markdown au même SHA.",
+        "Tester droits insuffisants et interprétation des sorties incomplètes."
+      ],
+      "ready": [
+        "Dépôts de recette et responsables identifiés ; droits de lecture confirmés.",
+        "Version GHES, URLs API, branches/SHA et bibliothèques attendues consignés.",
+        "Tests hors ligne et Python réussis ; corrections de branche et d'erreurs déployées.",
+        "Token fourni par mécanisme local/CI sécurisé, jamais dans l'issue."
+      ],
+      "done": [
+        "Cas npm, workspace et écosystèmes Java pertinents vérifiés sur un périmètre limité.",
+        "Différences entre off/tree/code expliquées et documentées.",
+        "Échantillon de versions déclarées/résolues comparé aux manifests et lockfiles.",
+        "JSON, Excel et Markdown cohérents ; rapports anonymisés et commandes joints.",
+        "Un défaut de droits est visible et ne produit pas un succès trompeur.",
+        "Limites réelles et procédure de recette reproductible consignées."
+      ]
+    },
+    {
+      "key": "docs",
+      "title": "[P2] Unifier la documentation et vérifier les exemples de commandes",
+      "dependencies": [
+        "views",
+        "python"
+      ],
+      "context": "Des guides contiennent encore npm start absent de package.json, des chemins Python erronés, npm init au lieu de npm ci et des instructions shell dans des blocs .env.",
+      "scope": [
+        "Définir un parcours de référence par usage : catalogue UI, API, dépendances, versions et inventaire GHES.",
+        "Aligner l'inventaire des commandes, options, entrées, sorties et limites.",
+        "Séparer Bash, PowerShell et dotenv ; remplacer les exemples obsolètes.",
+        "Conserver les noms historiques et documenter les modes de compatibilité plutôt que les supprimer silencieusement."
+      ],
+      "ready": [
+        "Configurations de bibliothèque réelles validées et commande Python connue.",
+        "Liste des commandes conservées et destinations de sortie approuvées.",
+        "Exemples choisis sans secrets ni chemins spécifiques indispensables."
+      ],
+      "done": [
+        "README oriente chaque usage vers un guide unique et actuel.",
+        "Chaque exemple pointe vers un script existant et ses options réelles.",
+        "Aucune recommandation npm init dans l'installation d'un checkout ; npm ci documenté.",
+        "Exemples .env valides séparés des instructions Bash/PowerShell.",
+        "Exemples exécutables testés sur fixtures ; authentification GHES expliquée sans secrets.",
+        "Ancienne documentation archivée ou explicitement remplacée ; liens vérifiés."
+      ]
+    },
+    {
+      "key": "isolation",
+      "title": "[P2] Séparer les moteurs graphes/versions et stabiliser leurs contrats de données",
+      "dependencies": [
+        "views",
+        "scan-tests"
+      ],
+      "context": "Le nouveau moteur des vues est indépendant, mais sourceProject.cjs contient encore le constructeur historique du graphe et l'analyse des sources des versions. Son empreinte de cache hache tout le fichier.",
+      "scope": [
+        "Définir les contrats d'identité, alias, filtres, cycles et erreurs sur des fixtures figées.",
+        "Isoler le code du graphe historique du moteur des versions sans changer leurs résultats implicitement.",
+        "Faire dépendre chaque empreinte de ses seules règles d'analyse.",
+        "Associer les TGF et métadonnées historiques pour détecter un mélange de vues/exécutions."
+      ],
+      "ready": [
+        "Jeu de résultats de référence pour graphes et versions approuvé.",
+        "Décision explicite sur le maintien de --detailed et graph:required-by-name.",
+        "Schémas et politique de compatibilité documentés avant déplacement du code."
+      ],
+      "done": [
+        "Une modification purement graphique n'invalide plus le cache des versions.",
+        "Tests prouvant l'absence de changement métier non demandé dans les deux chaînes.",
+        "Identités, alias et tris stables sur les fixtures JS/TS.",
+        "Métadonnées incompatibles avec un TGF détectées, au lieu d'être utilisées silencieusement.",
+        "Compatibilité des commandes historiques testée ; migration documentée si un schéma évolue.",
+        "npm run check et comparaisons de référence réussis."
+      ]
+    },
+    {
+      "key": "cleanup",
+      "title": "[P3] Auditer les dépendances et retirer progressivement le code obsolète",
+      "dependencies": [
+        "docs",
+        "isolation"
+      ],
+      "context": "Des dépendances graphiques n'ont pas d'usage direct identifié dans src et plusieurs parcours historiques coexistent. Leur absence dans une recherche textuelle ne suffit pas pour les supprimer.",
+      "scope": [
+        "Inventorier chaque dépendance directe et son usage runtime, CLI, tests ou documentation.",
+        "Examiner l'alerte Dependabot signalée sur la branche par défaut sans mise à jour majeure automatique.",
+        "Identifier fichiers et aides obsolètes, doublons de commandes et caractères d'arbre ???.",
+        "Proposer des suppressions petites, justifiées et réversibles, avec lockfile à jour."
+      ],
+      "ready": [
+        "Parcours maintenus et compatibilité validés.",
+        "Inventaire dépendances/fichiers préparé avec preuves d'usage ou d'absence d'usage.",
+        "Politique de traitement des alertes et versions Node confirmée."
+      ],
+      "done": [
+        "Chaque retrait possède une justification et ne casse aucune commande conservée.",
+        "Installation propre npm ci et npm run check réussies.",
+        "Tests scanner/Python et cas de référence des graphes/versions passés.",
+        "Lockfile cohérent ; alerte de dépendance traitée ou décision motivée documentée.",
+        "Arbres lisibles rétablis si concernés ; documentation sans références mortes.",
+        "Aucune suppression de données locales ou de références logs par simple nettoyage."
+      ]
+    }
+  ]
+}
