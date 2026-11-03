@@ -1,0 +1,4 @@
+{
+  "description": "Tests de référence JS/TS, Git local et mutation d'une copie isolée pour constater l'indépendance du cache.",
+  "manualContract": "Le rejet d'un TGF associé aux métadonnées d'une autre exécution reste à démontrer avant fermeture."
+}

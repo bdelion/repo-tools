@@ -1,0 +1,9 @@
+{
+  "pythonExecutable": "",
+  "minimumVersion": [3, 9],
+  "input": "examples/validation-python/dependencies.json",
+  "expectedRows": 3,
+  "expectedReactRows": 2,
+  "expectedUnresolved": 1,
+  "expectedPrerelease": "19.0.0-rc.1"
+}

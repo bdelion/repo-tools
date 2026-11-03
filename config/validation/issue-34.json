@@ -1,0 +1,9 @@
+{
+  "description": "Remplir avec les rapports d'un scan reel autorise, pas ceux du simulateur. Chemins relatifs a la racine du depot ou absolus. Aucun token ici.",
+  "dependenciesJson": "",
+  "workbook": "",
+  "markdown": "",
+  "expected": [],
+  "expectedExample": { "org": "MON_ORG", "repo": "MON_REPO", "default_branch": "main", "package_path": ".", "dependency": "react", "declared_range": "^18.2.0", "resolved_version": "18.2.0", "commit_sha_scanned": "SHA_REEL_40_CARACTERES" },
+  "evidence": { "ghesVersion": "", "prefilterComparisons": "", "accessDeniedProof": "" }
+}

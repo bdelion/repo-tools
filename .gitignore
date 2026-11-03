@@ -1,3 +1,6 @@
+# Sauvegardes locales avant import des propositions historiques
+*.history-backup-*.json
+
 # Created by https://www.toptal.com/developers/gitignore/api/git,vim,java,emacs,linux,macos,maven,python,eclipse,windows,notepadpp,sonarqube,tortoisegit,intellij+all,visualstudiocode,react
 # Edit at https://www.toptal.com/developers/gitignore?templates=git,vim,java,emacs,linux,macos,maven,python,eclipse,windows,notepadpp,sonarqube,tortoisegit,intellij+all,visualstudiocode,react
 
@@ -584,5 +587,5 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/git,vim,java,emacs,linux,macos,maven,python,eclipse,windows,notepadpp,sonarqube,tortoisegit,intellij+all,visualstudiocode,react
 
-# Sauvegardes locales avant import des propositions historiques
-*.history-backup-*.json
+# Résultats régénérables des exercices de validation.
+/reports/validation/

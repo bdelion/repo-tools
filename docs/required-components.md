@@ -12,7 +12,7 @@ components into another library.
 Générer d’abord les métadonnées associées au fichier TGF :
 
 ```bash
-npm run graph:analyze -- graphe/repo-react-component-dependency-graph.tgf
+npm run graph:analyze -- graphe/ecaille-react-component-dependency-graph.tgf
 ```
 
 Puis choisir un des trois modes :
@@ -23,13 +23,13 @@ séparateur, `--all` est consommé par npm et n’apparaît pas dans `process.ar
 
 ```bash
 # Liste explicite (comportement existant)
-npm run graph:required-by-name -- graphe/repo-react-component-dependency-graph.tgf ComboBox Dialog
+npm run graph:required-by-name -- graphe/ecaille-react-component-dependency-graph.tgf ComboBox Dialog
 
 # Tous les composants présents dans le graphe, y compris les composants isolés
-npm run graph:required-by-name -- graphe/repo-react-component-dependency-graph.tgf --all
+npm run graph:required-by-name -- graphe/ecaille-react-component-dependency-graph.tgf --all
 
 # Liste depuis un fichier ; entourer le chemin de guillemets s’il contient des espaces
-npm run graph:required-by-name -- graphe/repo-react-component-dependency-graph.tgf --components-file config/components.txt
+npm run graph:required-by-name -- graphe/ecaille-react-component-dependency-graph.tgf --components-file config/components.txt
 ```
 
 Le fichier est un texte UTF-8, avec un nom de composant par ligne, par exemple :
