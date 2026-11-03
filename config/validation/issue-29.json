@@ -1,0 +1,8 @@
+{
+  "cases": [
+    { "name": "absente", "branch": null, "expectedBranch": "main", "version": "18.2.0" },
+    { "name": "vide", "branch": "", "expectedBranch": "main", "version": "18.2.0" },
+    { "name": "espaces", "branch": "   ", "expectedBranch": "main", "version": "18.2.0" },
+    { "name": "explicite", "branch": "release-test", "expectedBranch": "release-test", "version": "19.0.0" }
+  ]
+}

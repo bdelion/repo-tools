@@ -1,0 +1,13 @@
+{
+  "cases": [
+    { "name": "nominal", "repositories": ["npm", "workspace"], "expectedRepos": 2, "expectedExit": "success" },
+    { "name": "vide-legitime", "repositories": [], "expectedRepos": 0, "expectedExit": "success" },
+    { "name": "filtre-sans-resultat", "repositories": ["npm"], "libs": "absent", "expectedRepos": 0, "expectedExit": "success" },
+    { "name": "acces-401", "discoveryStatus": 401, "preserve": true, "expectedExit": "failure" },
+    { "name": "acces-403", "discoveryStatus": 403, "preserve": true, "expectedExit": "failure" },
+    { "name": "acces-404", "discoveryStatus": 404, "preserve": true, "expectedExit": "failure" },
+    { "name": "limitation-429", "discoveryStatus": 429, "preserve": true, "expectedExit": "failure" },
+    { "name": "serveur-500", "discoveryStatus": 500, "preserve": true, "expectedExit": "failure" },
+    { "name": "partiel", "repositories": ["npm", "workspace"], "failedRepo": "workspace", "preserve": true, "expectedExit": "failure" }
+  ]
+}

@@ -111,8 +111,6 @@ sur des données connues. L'étape suivante consiste à fournir le chemin de ta
 bibliothèque réelle ; le développeur préparera alors les configurations complètes
 pour celle-ci et sa liste attendue avec le référent métier.
 
-**Il n'y a rien à configurer ni tester maintenant pour #29 à #37.** Ces tickets
-contiennent encore du développement ou une préparation à livrer avant recette.
-Leurs guides, données et commandes spécifiques devront être fournis par leurs
-développeurs. En particulier, ne pas lancer de scan de production pour essayer
-de valider ces tickets.
+**Les autres kits sont accessibles depuis [l'index](README.md).** Certains
+signalent encore des défauts (`FAIL`) ou des prérequis manquants (`BLOCKED`).
+Cela ne signifie pas que leur exécution a corrigé ou clôturé les tickets.

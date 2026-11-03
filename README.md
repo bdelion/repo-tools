@@ -4,6 +4,11 @@
 Voir [les commandes et les fichiers exacts à contrôler](docs/recette/issue-28.md).
 Cet exercice utilise une bibliothèque témoin fournie dans le dépôt, sans accès GHES.
 
+**Kits pour toutes les issues #28 à #38 :** `npm.cmd run validate:all`.
+Ouvrir ensuite `reports/validation/index.md` ; chaque ligne conduit à son résultat.
+Voir [les configurations, commandes et fichiers à contrôler](docs/recette/README.md).
+Les kits signalent aussi les défauts encore ouverts et les prérequis manquants.
+
 Pour analyser vos bibliothèques JavaScript/TypeScript, consulter le
 [guide des vues UI publique, API publique et dépendances](docs/library-views.md).
 La commande `generate-component-dependency-graph` reste disponible ; `graph:generate`

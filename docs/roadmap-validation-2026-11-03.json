@@ -34,17 +34,17 @@
         "expected": "Trois listes compréhensibles et trois graphes distincts : composants graphiques publics, API publique complète et dépendances internes/externes.",
         "prepare": [
           "Choisir une bibliothèque réelle et figer sa version ; fournir au validateur son nom et sa version, sans lui demander de les rechercher.",
-          "Préparer un exemple témoin contenant Button2, Button10 et Panel (UI publics), useTheme (hook public), formatDate (fonction publique), Props (type public), internalHelper (privé) et React.",
+          "Préparer un exemple témoin contenant Button2, Button10 et Panel (UI publics), useTheme (hook public), formatDate (fonction publique), PublicOptions (type public), internalHelper (privé) et React.",
           "Fournir les trois configurations et leurs commandes exactes, déjà remplies, ainsi qu'une liste attendue confirmée avec un utilisateur de la bibliothèque."
         ],
         "scenarios": [
           [
             "Ouvrir le catalogue « UI publique ».",
-            "Il contient Button2, Button10 et Panel ; il ne contient ni useTheme, ni formatDate, ni Props, ni internalHelper, ni React."
+            "Il contient Button2, Button10 et Panel ; il ne contient ni useTheme, ni formatDate, ni PublicOptions, ni internalHelper, ni React."
           ],
           [
             "Ouvrir le catalogue « API publique ».",
-            "Il contient les UI, useTheme, formatDate et Props ; internalHelper reste absent. Les autres exports doivent correspondre à la liste attendue fournie."
+            "Il contient les UI, useTheme, formatDate et PublicOptions ; internalHelper reste absent. Les autres exports doivent correspondre à la liste attendue fournie."
           ],
           [
             "Ouvrir le graphe « dépendances », avec les éléments externes.",
@@ -72,7 +72,7 @@
         "command": "npm.cmd run validate:issue-28",
         "configuration": "config/validation/issue-28/",
         "outputs": "reports/validation/issue-28/",
-        "status": "Demonstrateur livre : 8 controles PASS. Recette sur bibliotheque reelle encore a preparer."
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     },
     {
@@ -135,6 +135,13 @@
         ],
         "fail": "Refuser si un réglage vide produit zéro dépendance ou si la branche renseignée n'est pas respectée.",
         "outside": "Pas besoin d'un compte GitHub Enterprise ni de modifier les filtres de bibliothèques."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-29.md",
+        "command": "npm.cmd run validate:issue-29",
+        "configuration": "config/validation/issue-29.json",
+        "outputs": "reports/validation/issue-29/",
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     },
     {
@@ -198,6 +205,13 @@
         ],
         "fail": "Refuser si une erreur donne seulement un succès, si un scan incomplet est présenté comme complet ou si le dernier résultat complet est perdu.",
         "outside": "La politique de filtrage des bibliothèques reste inchangée."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-30.md",
+        "command": "npm.cmd run validate:issue-30",
+        "configuration": "config/validation/issue-30.json",
+        "outputs": "reports/validation/issue-30/",
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     },
     {
@@ -269,6 +283,13 @@
         ],
         "fail": "Refuser si un test dit seulement « succès » sans préciser ce qui était attendu, ou si les résultats nécessitent de connaître le code pour être interprétés.",
         "outside": "La recette sur GitHub Enterprise réel est traitée dans #34."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-31.md",
+        "command": "npm.cmd run validate:issue-31",
+        "configuration": "config/validation/issue-31.json",
+        "outputs": "reports/validation/issue-31/",
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     },
     {
@@ -338,6 +359,13 @@
         ],
         "fail": "Refuser si les totaux ne correspondent pas aux données, si une erreur devient un succès vide ou si le validateur doit deviner la commande Python.",
         "outside": "Pas de nouvelle collecte GitHub ; on utilise d'abord les fichiers exemples fournis."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-32.md",
+        "command": "npm.cmd run validate:issue-32",
+        "configuration": "config/validation/issue-32.json",
+        "outputs": "reports/validation/issue-32/",
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     },
     {
@@ -405,6 +433,13 @@
         ],
         "fail": "Refuser si Python n'est pas testé, si les références déclenchent les contrôles ou si le succès Jenkins est seulement supposé.",
         "outside": "Aucun nettoyage des données sous logs ; elles servent toujours de référence."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-33.md",
+        "command": "npm.cmd run validate:issue-33",
+        "configuration": "config/validation/issue-33.json",
+        "outputs": "reports/validation/issue-33/",
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     },
     {
@@ -478,6 +513,13 @@
         ],
         "fail": "Refuser si le périmètre n'est pas connu, si les totaux divergent entre formats ou si un problème d'accès est masqué.",
         "outside": "Pas de scan généralisé de tous les dépôts avant validation du petit périmètre."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-34.md",
+        "command": "npm.cmd run validate:issue-34",
+        "configuration": "config/validation/issue-34.json",
+        "outputs": "reports/validation/issue-34/",
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     },
     {
@@ -546,6 +588,13 @@
         ],
         "fail": "Refuser si le guide nécessite encore une explication orale pour terminer un exemple ou si une commande documentée n'existe pas.",
         "outside": "La documentation ne doit pas promettre un chiffrage en jours qui n'existe pas."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-35.md",
+        "command": "npm.cmd run validate:issue-35",
+        "configuration": "config/validation/issue-35.json",
+        "outputs": "reports/validation/issue-35/",
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     },
     {
@@ -614,6 +663,13 @@
         ],
         "fail": "Refuser si les écarts sont justifiés seulement par « refonte technique », sans explication métier ni accord sur le changement.",
         "outside": "Pas d'ajout de fonctionnalités métier pendant ce lot de séparation."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-36.md",
+        "command": "npm.cmd run validate:issue-36",
+        "configuration": "config/validation/issue-36.json",
+        "outputs": "reports/validation/issue-36/",
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     },
     {
@@ -686,6 +742,13 @@
         ],
         "fail": "Refuser si une commande disparaît sans migration, si des données locales sont effacées ou si des dépendances sont retirées sans preuve.",
         "outside": "Pas de suppression automatique de logs, de rapports utilisateur ou de configurations locales."
+      },
+      "availableRecipe": {
+        "guide": "docs/recette/issue-37.md",
+        "command": "npm.cmd run validate:issue-37",
+        "configuration": "config/validation/issue-37.json",
+        "outputs": "reports/validation/issue-37/",
+        "status": "Kit executable livre ; consulter le rapport PASS/FAIL/BLOCKED. Ne cloture pas le ticket."
       }
     }
   ]

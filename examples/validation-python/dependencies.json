@@ -1,0 +1,5 @@
+[
+  { "org": "validation", "repo": "app-a", "default_branch": "main", "package_path": ".", "package_name": "app-a", "dependency": "react", "declared_range": "^18.2.0", "resolved_version": "18.2.0", "lock_source": "npm-lock", "commit_sha_scanned": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+  { "org": "validation", "repo": "app-b", "default_branch": "main", "package_path": ".", "package_name": "app-b", "dependency": "react", "declared_range": "19.0.0-rc.1", "resolved_version": "19.0.0-rc.1", "lock_source": "npm-lock", "commit_sha_scanned": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+  { "org": "validation", "repo": "app-c", "default_branch": "main", "package_path": ".", "package_name": "app-c", "dependency": "lodash", "declared_range": "^4.17.21", "resolved_version": null, "lock_source": null, "commit_sha_scanned": "cccccccccccccccccccccccccccccccccccccccc" }
+]

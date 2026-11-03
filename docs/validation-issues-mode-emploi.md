@@ -4,7 +4,10 @@
 La bibliothèque témoin, les trois configurations et la commande
 `npm.cmd run validate:issue-28` sont maintenant livrées. Le guide indique les
 fichiers précis et les contenus attendus. Cela ne clôture pas la recette réelle.
-Les issues #29 à #37 restent du travail à préparer avant de demander une validation.
+**Tous les kits #28 à #38 sont maintenant fournis** : voir [leur index](recette/README.md).
+`npm.cmd run validate:all` les exécute et écrit `reports/validation/index.md`.
+Un kit peut constater un défaut (`FAIL`) ou un prérequis manquant (`BLOCKED`) ;
+sa disponibilité ne signifie pas que l'issue est corrigée.
 
 Les issues [#28 à #37](https://github.com/bdelion/repo-tools/issues/38) sont des
 travaux à réaliser, pas une demande de tester immédiatement des fonctionnalités
@@ -28,10 +31,9 @@ et dépendances. Elle ne signifie pas que le développement est déjà terminé.
 
 **Prêt à valider** signifie que le développeur a livré un guide de recette, les
 fichiers à ouvrir, les commandes remplies et une comparaison attendu/obtenu.
-Il doit créer `docs/recette/issue-N.md` pour son ticket ; ces guides ne sont pas
-encore tous livrés : #28 possède désormais un exercice témoin, les autres restent
-à produire. Si le dossier manque, noter « non prêt
-à valider » et demander de le compléter, sans deviner les résultats.
+Les guides `docs/recette/issue-N.md` sont livrés pour chaque ticket. Ils précisent
+les contrôles exécutables et les preuves métier ou externes encore nécessaires.
+Un résultat BLOCKED indique ce qui manque ; il ne demande pas de deviner les résultats.
 
 **Definition of Done (DoD)** signifie « le travail et sa validation sont terminés » :
 les scénarios passent, les preuves sont disponibles et les tests/documentations
