@@ -1,0 +1,9 @@
+{
+  "source": "../../ma-lib/src",
+  "entries": ["index.ts"],
+  "view": "public-ui",
+  "output": "../reports/ma-lib/ui.tgf",
+  "external": false,
+  "uiInclude": [],
+  "uiExclude": []
+}

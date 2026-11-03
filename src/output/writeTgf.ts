@@ -12,14 +12,14 @@
 import * as fs from 'fs';
 import path from 'node:path';
 import { NodeMap, DependencyMap } from '../types/types';
+import { naturalCompare } from '../graph/naturalOrder';
 
 export function writeTgfFile(nodes: NodeMap, dependencies: DependencyMap, outputFile: string): void {
     let fileContent = '';
-    const collator = new Intl.Collator('en', { numeric: true });
     const compareIdentifiers = (a: string, b: string): number =>
-        collator.compare(a, b) || (a < b ? -1 : a > b ? 1 : 0);
+        naturalCompare(nodes[a]?.visibleName ?? a, nodes[b]?.visibleName ?? b) || naturalCompare(a, b);
 
-    // Écriture des nœuds par identifiant, dans l'ordre alphanumérique naturel.
+    // Écriture des nœuds par nom visible ; l'identifiant départage les homonymes.
     Object.keys(nodes).sort(compareIdentifiers).forEach(key => {
         const node = nodes[key];
         fileContent += `\n${key} ${node.visibleName} ${node.icone} ${node.fileName}`;

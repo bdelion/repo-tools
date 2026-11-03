@@ -1,5 +1,10 @@
 # 🕸️ Génération d’un graphe de dépendances entre composants
 
+> **Parcours actuel :** voir [les trois vues UI publique, API et dépendances](library-views.md)
+> pour les options, catalogues, prérequis et analyses d'impact. Sans option, la
+> génération utilise désormais `public-ui`. Les sections ci-dessous décrivent
+> le parcours TGF historique ; `--detailed` conserve son moteur de réexports.
+
 ## 🎯 Objectif
 
 - Visualiser les dépendances entre composants d’un projet (ou multi-projets).
@@ -30,7 +35,7 @@
     ```
 1. Traiter le résultat, un fichier `.tgf` enregistré dans le dossier `graphe`, via [yEd].
 
-Dans le fichier TGF, les nœuds sont triés par identifiant et les liens par source, puis par cible, dans l’ordre alphanumérique naturel (`Component2` avant `Component10`).
+Dans le fichier TGF, les nœuds sont triés par nom visible et les liens par nom de source, puis de cible, dans l’ordre alphanumérique naturel (`Component2` avant `Component10`). L'identifiant départage les homonymes.
 
 La vue par défaut représente les implémentations : les imports à travers des
 réexports sont reliés directement au fichier qui définit le symbole. Les alias

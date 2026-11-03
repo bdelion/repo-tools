@@ -1,5 +1,10 @@
 # RepoTools for ENTERPRISE
 
+Pour analyser vos bibliothèques JavaScript/TypeScript, consulter le
+[guide des vues UI publique, API publique et dépendances](docs/library-views.md).
+La commande `generate-component-dependency-graph` reste disponible ; `graph:generate`
+est son alias. Le guide décrit les catalogues, le plan par niveaux et l'analyse d'impact.
+
 | Service             |               Master               |              Develop               |
 | :------------------ | :--------------------------------: | :--------------------------------: |
 | CI Status           |    [![Build Status][jmb]][jml]     |    [![Build Status][jdb]][jdl]     |
