@@ -98,12 +98,12 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
         compilerOptions = { ...compilerOptions, ...parsed.options };
     }
     // Certaines bibliothèques JavaScript n'ont aucun fichier de configuration,
-    // mais écrivent `src/...` pour désigner leur propre dossier src. Dans ce cas
-    // précis, appliquer la convention sans demander une option supplémentaire.
+    // mais écrivent `src/...` ou `/src/...` pour désigner leur propre dossier src.
+    // Dans ce cas précis, appliquer la convention sans demander une option supplémentaire.
     const sourceIsNamedSrc = path.basename(source).toLowerCase() === 'src';
     const sourceConvention = !configPath && sourceIsNamedSrc ? {
         baseUrl: source,
-        paths: { 'src': ['.'], 'src/*': ['*'] },
+        paths: { 'src': ['.'], 'src/*': ['*'], '/src': ['.'], '/src/*': ['*'] },
     } : {};
     compilerOptions = { ...compilerOptions, ...sourceConvention, allowJs: true, noEmit: true, skipLibCheck: true };
     const fileSet = new Set(files);
@@ -113,11 +113,15 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
     const sourceCandidate = (file: string): string | undefined => {
         return sourceCandidates(file).find(candidate => fileSet.has(path.resolve(candidate)));
     };
+    const sourceAliasPath = (specifier: string): string | undefined => {
+        if (configPath || !sourceIsNamedSrc) return undefined;
+        if (specifier === 'src' || specifier.startsWith('src/')) return path.join(source, specifier.slice('src'.length));
+        if (specifier === '/src' || specifier.startsWith('/src/')) return path.join(source, specifier.slice('/src'.length));
+        return undefined;
+    };
     const unresolvedImportMessage = (specifier: string, file: string): string => {
         const directPath = specifier.startsWith('.') ? path.resolve(path.dirname(file), specifier)
-            : path.isAbsolute(specifier) ? specifier
-                : !configPath && sourceIsNamedSrc && (specifier === 'src' || specifier.startsWith('src/'))
-                    ? path.join(source, specifier.slice('src'.length)) : undefined;
+            : sourceAliasPath(specifier) ?? (path.isAbsolute(specifier) ? specifier : undefined);
         const tried = directPath ? sourceCandidates(directPath) : [];
         const paths = Object.keys(compilerOptions.paths ?? {});
         return [
@@ -248,10 +252,11 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
             if (isResource(specifier)) continue;
             let resolution = ts.resolveModuleName(specifier, file.fileName, compilerOptions, ts.sys).resolvedModule;
             // La rÃ©solution TypeScript peut Ã©chouer sur certains projets JavaScript
-            // sans configuration. Pour la convention `src/...`, chercher aussi dans
+            // sans configuration. Pour les conventions `src/...` et `/src/...`, chercher aussi dans
             // les fichiers qui viennent d'Ãªtre scannÃ©s, y compris `index.*`.
-            if (!resolution && !configPath && sourceIsNamedSrc && (specifier === 'src' || specifier.startsWith('src/'))) {
-                const candidate = sourceCandidate(path.join(source, specifier.slice('src'.length)));
+            const aliasPath = sourceAliasPath(specifier);
+            if (!resolution && aliasPath) {
+                const candidate = sourceCandidate(aliasPath);
                 if (candidate) resolution = {
                     resolvedFileName: candidate,
                     extension: scriptExtension(candidate),
