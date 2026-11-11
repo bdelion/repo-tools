@@ -35,6 +35,10 @@ Les chemins pointant vers des fichiers compilés, absents, ou avec jokers demand
 des entrées source explicites. Sans champ `exports`, `index.*` ou `src/index.*`
 sert de convention et un diagnostic demande de vérifier ce périmètre.
 
+Quand la source analysée s'appelle `src` et que la bibliothèque ne possède ni
+`tsconfig.json` ni `jsconfig.json`, les imports tels que `src/components` sont
+automatiquement compris comme des fichiers de ce même dossier `src`.
+
 La vue `dependencies` peut être utilisée sans entrée publique. Les points
 d'entrée explicites prennent priorité sur la découverte dans `package.json`.
 

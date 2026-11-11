@@ -117,6 +117,33 @@ test('les imports locaux cassés échouent et la classification UI peut être co
     assert.throws(() => analyzeLibrary({ source: path.join(root, 'src'), view: 'dependencies' }), /Import local non résolu/);
 }));
 
+test('la convention src est comprise sans fichier tsconfig ou jsconfig', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'repo-tools-library-no-config-'));
+    const source = path.join(root, 'src');
+    const write = (file: string, content: string) => {
+        const target = path.join(root, file);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, content);
+    };
+    try {
+        write('src/components/Button.jsx', 'export const Button = () => <button/>;');
+        write('src/card-template/CardTemplate.jsx', "import { Button } from 'src/components/Button'; export const CardTemplate = () => <Button/>;");
+        write('src/components/index.js', "export { CardTemplate } from '../card-template/CardTemplate';");
+        const result = analyzeLibrary({ source, entries: ['components/index.js'], view: 'public-ui' });
+        assert.deepEqual(result.nodes.map(node => node.name), ['CardTemplate']);
+        assert.ok(result.analysis.nodes.some(node => node.name === 'Button'));
+        assert.ok(result.analysis.edges.some(edge => {
+            const from = result.analysis.nodes.find(node => node.id === edge.source)?.name;
+            const to = result.analysis.nodes.find(node => node.id === edge.target)?.name;
+            return from === 'CardTemplate' && to === 'Button';
+        }));
+    } finally {
+        assert.equal(path.dirname(root), path.resolve(os.tmpdir()));
+        assert.ok(path.basename(root).startsWith('repo-tools-library-no-config-'));
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+});
+
 test('les options sont validées et les chemins de configuration sont relatifs à son fichier', () => fixture((root, write) => {
     write('config/library.json', JSON.stringify({ source: '../src', entries: ['index.ts'], view: 'public-api', output: '../output/api.tgf' }));
     const parsed = parseLibraryArgs(['--config', path.join(root, 'config/library.json')]);

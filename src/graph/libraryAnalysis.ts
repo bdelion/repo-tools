@@ -67,8 +67,10 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
     let configDirectory = source;
     let configPath: string | undefined;
     while (true) {
-        const candidate = path.join(configDirectory, 'tsconfig.json');
-        if (fs.existsSync(candidate)) { configPath = candidate; break; }
+        const candidate = ['tsconfig.json', 'jsconfig.json']
+            .map(name => path.join(configDirectory, name))
+            .find(fs.existsSync);
+        if (candidate) { configPath = candidate; break; }
         if (fs.existsSync(path.join(configDirectory, 'package.json')) || fs.existsSync(path.join(configDirectory, '.git'))) break;
         const parent = path.dirname(configDirectory);
         if (parent === configDirectory) break;
@@ -86,7 +88,15 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
         if (errors.length) throw new Error(errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, '\n')).join('\n'));
         compilerOptions = { ...compilerOptions, ...parsed.options };
     }
-    compilerOptions = { ...compilerOptions, allowJs: true, noEmit: true, skipLibCheck: true };
+    // Certaines bibliothèques JavaScript n'ont aucun fichier de configuration,
+    // mais écrivent `src/...` pour désigner leur propre dossier src. Dans ce cas
+    // précis, appliquer la convention sans demander une option supplémentaire.
+    const sourceIsNamedSrc = path.basename(source).toLowerCase() === 'src';
+    const sourceConvention = !configPath && sourceIsNamedSrc ? {
+        baseUrl: source,
+        paths: { 'src': ['.'], 'src/*': ['*'] },
+    } : {};
+    compilerOptions = { ...compilerOptions, ...sourceConvention, allowJs: true, noEmit: true, skipLibCheck: true };
     const fileSet = new Set(files);
     const sourceCandidate = (file: string): string | undefined => {
         const candidates = [file, ...['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs'].map(ext => file + ext),
