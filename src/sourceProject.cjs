@@ -66,7 +66,7 @@ function parseSource(content, file) {
   return { imports, exports, ast: ast.program.body };
 }
 
-function createSourceProject(root, { assetExtensions = [] } = {}) {
+function createSourceProject(root, { assetExtensions = [], includeIgnoredExports = false, sourceFilter = () => true } = {}) {
   root = path.resolve(root);
   let directory = root;
   let configFile;
@@ -105,15 +105,63 @@ function createSourceProject(root, { assetExtensions = [] } = {}) {
       return null;
     }
     const resolution = ts.resolveModuleName(source, from, options, ts.sys).resolvedModule;
-    if (resolution && !resolution.isExternalLibraryImport && !resolution.resolvedFileName.endsWith('.d.ts')) {
-      return path.resolve(resolution.resolvedFileName);
+    if (resolution) {
+      if (resolution.isExternalLibraryImport || /\.d\.(?:ts|mts|cts)$/.test(resolution.resolvedFileName)) return null;
+      const target = path.resolve(resolution.resolvedFileName);
+      return sourceFilter(target) ? target : null;
     }
     const local = source.startsWith('.') || path.isAbsolute(source) || Object.keys(options.paths ?? {}).some(pattern => {
+      // Un alias global ne permet pas de distinguer un paquet externe d'une source locale.
+      if (pattern === '*') return false;
       const [prefix, suffix = ''] = pattern.split('*');
       return pattern.includes('*') ? source.startsWith(prefix) && source.endsWith(suffix) : source === pattern;
     });
     if (local) throw new Error(`Import local non résolu : ${source} depuis ${from}`);
     return null;
+  };
+  const isTypeExport = (file, name, visiting = new Set()) => {
+    const key = `${file}#${name}`;
+    if (visiting.has(key)) return false;
+    const next = new Set(visiting).add(key);
+    const body = read(file).ast;
+    const localIsType = local => {
+      const declarations = body.map(node => node.declaration ?? node);
+      if (declarations.some(node => node.type === 'VariableDeclaration' &&
+        node.declarations.some(declaration => declaration.id?.name === local))) return false;
+      const matching = declarations.filter(node => node.id?.name === local);
+      // Une interface peut partager son nom avec une valeur (fusion de déclarations).
+      if (matching.some(node => !['TSInterfaceDeclaration', 'TSTypeAliasDeclaration'].includes(node.type))) return false;
+      if (matching.length) return true;
+      for (const node of body.filter(node => node.type === 'ImportDeclaration')) {
+        const spec = node.specifiers.find(spec => spec.local.name === local);
+        if (!spec) continue;
+        if (node.importKind === 'type' || spec.importKind === 'type') return true;
+        const target = resolve(file, node.source.value);
+        const imported = spec.type === 'ImportDefaultSpecifier' ? 'default' : spec.imported?.name ?? spec.imported?.value;
+        return Boolean(target && imported && isTypeExport(target, imported, next));
+      }
+      return false;
+    };
+    for (const node of body) {
+      if (node.type === 'ExportDefaultDeclaration' && name === 'default') {
+        return node.declaration.type === 'TSInterfaceDeclaration' ||
+          (node.declaration.type === 'Identifier' && localIsType(node.declaration.name));
+      }
+      if (node.type !== 'ExportNamedDeclaration') continue;
+      if (node.declaration?.id?.name === name) return localIsType(name);
+      const spec = (node.specifiers ?? []).find(spec => (spec.exported.name ?? spec.exported.value) === name);
+      if (!spec) continue;
+      if (node.exportKind === 'type' || spec.exportKind === 'type') return true;
+      const local = spec.local?.name ?? spec.local?.value;
+      if (!node.source) return localIsType(local);
+      const target = resolve(file, node.source.value);
+      return Boolean(target && local && isTypeExport(target, local, next));
+    }
+    return name !== 'default' && body.some(node => {
+      if (node.type !== 'ExportAllDeclaration') return false;
+      const target = resolve(file, node.source.value);
+      return Boolean(target && isTypeExport(target, name, next));
+    });
   };
   const resolveExport = (file, name, visiting = new Set()) => {
     const key = `${file}#${name}`;
@@ -124,6 +172,9 @@ function createSourceProject(root, { assetExtensions = [] } = {}) {
     if (explicit) {
       if (!explicit.source) return { file, name, local: explicit.local };
       const target = resolve(file, explicit.source);
+      // Le graphe doit distinguer un export hors périmètre d'un symbole absent,
+      // y compris lorsque cet export traverse plusieurs barrels.
+      if (!target && includeIgnoredExports) return { file, name, ignored: true };
       if (target && isAsset(target)) return { file: target, name: explicit.imported, asset: true };
       if (target && explicit.imported === '*') return { file: target, name: '*', local: explicit.name };
       return target ? resolveExport(target, explicit.imported, next) : null;
@@ -147,7 +198,7 @@ function createSourceProject(root, { assetExtensions = [] } = {}) {
       return target ? exportedNames(target, next).filter(name => name !== 'default') : [];
     }))];
   };
-  return { read, resolve, resolveExport, exportedNames, options };
+  return { read, resolve, resolveExport, exportedNames, isTypeExport, options };
 }
 
 function analysisFingerprint(config) {
@@ -162,18 +213,29 @@ function analysisFingerprint(config) {
   return hash.digest('hex');
 }
 
-function buildSourceGraph(root, files, excluded = () => false) {
+function buildSourceGraph(root, files, excluded = () => false, { view = 'detailed' } = {}) {
+  if (!['components', 'detailed'].includes(view)) throw new Error(`Vue de graphe inconnue : ${view}`);
   root = path.resolve(root);
-  const project = createSourceProject(root);
+  const relative = file => path.relative(root, file).replace(/\\/g, '/');
+  const outside = file => {
+    const location = path.relative(root, file);
+    return location === '..' || location.startsWith(`..${path.sep}`) || path.isAbsolute(location);
+  };
+  const project = createSourceProject(root, {
+    includeIgnoredExports: true,
+    sourceFilter: file => !outside(file) && !excluded(relative(file)),
+  });
   const nodes = new Map();
   const edges = new Map();
-  const relative = file => path.relative(root, file).replace(/\\/g, '/');
   const id = (file, name) => `${encodeURIComponent(relative(file))}#${encodeURIComponent(name)}`;
   const exportNames = (file, visited = new Set()) => {
     if (visited.has(file)) return [];
     const next = new Set(visited).add(file);
     return [...new Set(project.read(file).exports.flatMap(exp => {
-      if (exp.name !== '*') return [exp.name];
+      if (exp.name !== '*') {
+        if (project.isTypeExport(file, exp.name) || project.resolveExport(file, exp.name)?.ignored) return [];
+        return [exp.name];
+      }
       const target = project.resolve(file, exp.source);
       return target ? exportNames(target, next).filter(name => name !== 'default') : [];
     }))];
@@ -184,7 +246,7 @@ function buildSourceGraph(root, files, excluded = () => false) {
     const file = path.resolve(pending.pop());
     if (visited.has(file) || excluded(relative(file))) continue;
     visited.add(file);
-    if (relative(file).startsWith('../')) throw new Error(`Source hors du périmètre : ${file}`);
+    if (outside(file)) throw new Error(`Source hors du périmètre : ${file}`);
     const source = project.read(file);
     const names = exportNames(file).filter(name => {
       const declaration = source.exports.find(item => item.name === name);
@@ -197,24 +259,55 @@ function buildSourceGraph(root, files, excluded = () => false) {
       nodes.set(id(file, name), { id: id(file, name), visibleName: name === 'default' ? exp?.local ?? name : name,
         icone: exp?.icone ?? '', fileName: relative(file) });
     }
-    const requests = [...source.imports, ...source.exports.filter(exp => exp.source)];
+    const localNames = names.filter(name => !source.exports.find(exp => exp.name === name)?.source &&
+      source.exports.some(exp => exp.name === name));
+    const requests = [
+      ...source.imports.map(request => ({ ...request, owners: localNames })),
+      ...source.exports.filter(exp => exp.source).map(request => ({ ...request, reexport: true })),
+    ];
     for (const request of requests) {
       const target = project.resolve(file, request.source);
       if (!target || excluded(relative(target))) continue;
       pending.push(target);
       const requested = request.imported === '*' ? exportNames(target) : [request.imported];
       for (const name of requested) {
+        if (project.isTypeExport(target, name)) continue;
         const resolved = project.resolveExport(target, name);
         if (!resolved) throw new Error(`Export introuvable : ${name} depuis ${request.source} dans ${file}`);
+        if (resolved.ignored) continue;
         const targetNames = exportNames(target);
         if (!targetNames.includes(name)) throw new Error(`Export introuvable : ${name} dans ${target}`);
-        for (const ownName of names) {
+        const owners = request.reexport ? (request.name === '*' ? [name] : [request.name]) : request.owners;
+        for (const ownName of owners.filter(name => names.includes(name))) {
           const ownId = id(file, ownName);
           if (!edges.has(ownId)) edges.set(ownId, new Set());
           edges.get(ownId).add(id(target, name));
         }
       }
     }
+  }
+  if (view === 'components') {
+    const canonical = new Map();
+    for (const node of nodes.values()) {
+      const name = decodeURIComponent(node.id.slice(node.id.lastIndexOf('#') + 1));
+      const resolved = project.resolveExport(path.resolve(root, node.fileName), name);
+      const target = resolved && !resolved.ignored && resolved.name !== '*' ? id(resolved.file, resolved.name) : node.id;
+      canonical.set(node.id, nodes.has(target) ? target : node.id);
+    }
+    const componentNodes = [...nodes.values()].filter(node => canonical.get(node.id) === node.id);
+    const componentEdges = new Map();
+    for (const [source, targets] of edges) {
+      const from = canonical.get(source);
+      // Les liens de réexport décrivent l'exposition du symbole, pas son implémentation.
+      if (from !== source) continue;
+      for (const target of targets) {
+        const to = canonical.get(target);
+        if (from === to && source !== target) continue;
+        if (!componentEdges.has(from)) componentEdges.set(from, new Set());
+        componentEdges.get(from).add(to);
+      }
+    }
+    return { nodes: componentNodes, edges: [...componentEdges].map(([source, targets]) => [source, [...targets]]) };
   }
   return { nodes: [...nodes.values()], edges: [...edges].map(([source, targets]) => [source, [...targets]]) };
 }

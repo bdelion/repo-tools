@@ -1,0 +1,12 @@
+{
+  "cases": [
+    { "name": "npm-lock", "repositories": ["npm"], "dependencies": ["react"], "resolved": "18.2.0" },
+    { "name": "workspace", "repositories": ["workspace"], "dependencies": ["lodash", "react"] },
+    { "name": "maven", "repositories": ["maven"], "dependencies": ["org.slf4j:slf4j-api"], "project": "org.validation:demo" },
+    { "name": "gradle", "repositories": ["gradle"], "dependencies": ["org.slf4j:slf4j-api"], "resolved": "2.0.9" },
+    { "name": "pagination", "repositories": ["npm", "workspace"], "pagination": true, "dependencies": ["lodash", "react"], "expectedRepos": 2 },
+    { "name": "filtre-react", "repositories": ["npm", "workspace"], "libs": "react", "dependencies": ["react"] },
+    { "name": "exclusion-dossier", "repositories": ["workspace"], "excludeDirs": "packages/utils", "dependencies": ["react"] },
+    { "name": "exclusion-fork", "repositories": ["npm", "fork"], "dependencies": ["react"], "expectedRepos": 1 }
+  ]
+}

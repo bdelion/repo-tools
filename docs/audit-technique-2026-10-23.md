@@ -1,4 +1,4 @@
-# Audit technique de repo-tools — 23 octobre 2026
+# Audit technique de ecaille-tools — 23 octobre 2026
 
 ## Avis d’architecture
 
@@ -19,7 +19,7 @@ packages. Une réécriture globale ou des microservices ne sont pas nécessaires
 
 ### P0 — Débordement de pile dans la génération du graphe : corrigé localement
 
-Issue : https://github.com/bdelion/repo-tools/issues/1.
+Issue : https://github.com/bdelion/ecaille-tools/issues/1.
 
 `src/graph/graphBuilder.ts` parcourait récursivement les dépendances sans ensemble
 de nœuds visités. `A → B → A` ou `A → A` provoquait une récursion sans fin. Une
@@ -201,7 +201,7 @@ dans l’environnement disposant de ces sources. La chaîne de 20 000 nœuds val
 le constructeur du graphe, pas les parcours récursifs de l’analyseur aval.
 
 Lecture des sources versionnées, configurations, points d’entrée et documentation.
-Aucun scan de l’instance GitHub Enterprise, clonage des dépôts métier ni appel à
+Aucun scan de l’instance GitHub ENTERPRISE, clonage des dépôts métier ni appel à
 Jenkins/Sonar n’a été effectué. Les constats de logique sont issus du code ; les
 résultats d’exécution des vérifications locales sont rapportés séparément dans
 le retour de livraison. Aucun engagement sur des vulnérabilités de dépendances

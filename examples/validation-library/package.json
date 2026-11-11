@@ -1,0 +1,6 @@
+{
+  "name": "repo-tools-validation-library",
+  "private": true,
+  "version": "1.0.0",
+  "exports": "./src/index.ts"
+}

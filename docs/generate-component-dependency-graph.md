@@ -1,5 +1,10 @@
 # 🕸️ Génération d’un graphe de dépendances entre composants
 
+> **Parcours actuel :** voir [les trois vues UI publique, API et dépendances](library-views.md)
+> pour les options, catalogues, prérequis et analyses d'impact. Sans option, la
+> génération utilise désormais `public-ui`. Les sections ci-dessous décrivent
+> le parcours TGF historique ; `--detailed` conserve son moteur de réexports.
+
 ## 🎯 Objectif
 
 - Visualiser les dépendances entre composants d’un projet (ou multi-projets).
@@ -30,11 +35,38 @@
     ```
 1. Traiter le résultat, un fichier `.tgf` enregistré dans le dossier `graphe`, via [yEd].
 
-Dans le fichier TGF, les nœuds sont triés par identifiant et les liens par source, puis par cible, dans l’ordre alphanumérique naturel (`Component2` avant `Component10`).
+Dans le fichier TGF, les nœuds sont triés par nom visible et les liens par nom de source, puis de cible, dans l’ordre alphanumérique naturel (`Component2` avant `Component10`). L'identifiant départage les homonymes.
+
+La vue par défaut représente les implémentations : les imports à travers des
+réexports sont reliés directement au fichier qui définit le symbole. Les alias
+de réexport ne créent donc pas de nœuds supplémentaires et les composants
+homonymes définis dans des fichiers différents restent distincts.
+
+Pour examiner les chemins de réexport et les fichiers `index.*`, utiliser la vue
+détaillée (elle écrit au même `OUTPUT_TGF_PATH` que la vue par défaut) :
+
+```bash
+npm run generate-component-dependency-graph -- --detailed
+```
+
+Dans cette vue, chaque réexport dépend uniquement du symbole qu’il expose.
+Un fichier réexportant 43 symboles ne crée plus 43 × 43 liens de réexport.
+Régénérer les métadonnées avec `graph:analyze` après avoir changé de vue.
 
 L’identité d’un composant repose désormais sur son chemin et son export ; les
 imports sont résolus via AST et configuration TypeScript. Régénérer le TGF et ses
 métadonnées après migration. Voir [identifiants, résolution et limites](reliability.md).
+
+`ORIGIN_PATH` définit le périmètre des sources du graphe. Les imports résolus en
+dehors de ce dossier (par exemple `../tools/tests/isFullySelected`) sont ignorés,
+y compris à travers les réexports. Les imports locaux introuvables restent des
+erreurs. Pour inclure des sources situées dans des dossiers voisins, élargir
+`ORIGIN_PATH` à leur dossier parent commun ; cela modifie les identifiants relatifs
+et nécessite de régénérer le graphe et ses métadonnées.
+
+Les fichiers de code placés dans `assets` sont analysés : ce dossier peut contenir
+des composants React comme `assets/svg/svg.tsx`. Les ressources `.svg`, images et
+feuilles de style restent exclues du graphe.
 
 ### Graphe statique (image ou DOT)
 
@@ -48,14 +80,14 @@ npx madge src --dot > reports/graph.dot
 
 1. Pour générer le graphe, exécuter la commande :
     ```bash
-    npm start -- -p /c/workspaces/github/repo/repo-react -t d3
+    npm start -- -p /c/workspaces/github/ecaille/ecaille-react -t d3
     ```
     qui retourne :
     ```bash
-    > repo-tools-npm-init@1.0.0 start
-    > ts-node src/index.ts -p C:/workspaces/github/repo/repo-react -t d3
+    > ecaille-tools-npm-init@1.0.0 start
+    > ts-node src/index.ts -p C:/workspaces/github/ecaille/ecaille-react -t d3
 
-    Analyse du projet à : C:/workspaces/github/repo/repo-react
+    Analyse du projet à : C:/workspaces/github/ecaille/ecaille-react
     Génération du graphe D3...
     Données de graphe générées dans graph-data.json
     ```
@@ -97,14 +129,14 @@ npx madge src --dot > reports/graph.dot
 
 1. Pour générer le fichier `graphml`, exécuter la commande :
     ```bash
-    npm start -- -p /c/workspaces/github/repo/repo-react -t grapml
+    npm start -- -p /c/workspaces/github/ecaille/ecaille-react -t grapml
     ```
     qui retourne :
     ```bash
-    > repo-tools-npm-init@1.0.0 start
-    > ts-node src/index.ts -p C:/workspaces/github/repo/repo-react -t graphml
+    > ecaille-tools-npm-init@1.0.0 start
+    > ts-node src/index.ts -p C:/workspaces/github/ecaille/ecaille-react -t graphml
 
-    Analyse du projet à : C:/workspaces/github/repo/repo-react
+    Analyse du projet à : C:/workspaces/github/ecaille/ecaille-react
     Génération du fichier GraphML...
     Données de graphe générées dans graphe/graph-data.graphml
     ```

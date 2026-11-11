@@ -1,0 +1,7 @@
+{
+  "source": "../../../examples/validation-library/src",
+  "entries": ["index.ts"],
+  "view": "public-api",
+  "output": "../../../reports/validation/issue-28/public-api.tgf",
+  "external": false
+}

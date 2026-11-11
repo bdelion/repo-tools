@@ -12,7 +12,7 @@ La commande parcourt récursivement `reports` et convertit chaque rapport global
 versions et les fichiers temporaires Excel, sont ignorés.
 
 ```powershell
-npm run history:export -- --reports-dir logs --output-dir reports/historiques --repo plume-react
+npm run history:export -- --reports-dir logs --output-dir reports/historiques --repo ecaille-react
 ```
 
 `--reports-dir` change le dossier d'entrée, `--output-dir` change le dossier de
@@ -29,7 +29,7 @@ Les marqueurs `+`, `~`, `=`, `-` et vide deviennent respectivement `added`,
 présence ; elle conserve l'identité précédente. Une réapparition crée une nouvelle
 identité. Les noms identiques de lignes différentes restent séparés.
 
-Le fichier manuel `logs/plume-react-historique-composants.yaml` contient aussi
+Le fichier manuel `logs/ecaille-react-historique-composants.yaml` contient aussi
 une sélection métier, des regroupements (Checkbox, Live Zone), un renommage
 Table et un composant DateBox sans ligne source. Ces décisions ne sont pas
 contenues dans le classeur : la commande exporte toutes ses lignes sans inventer

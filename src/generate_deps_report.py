@@ -29,7 +29,7 @@ Chaque paramètre est documenté et chaque étape clé est commentée.
 # (désormais, --in accepte aussi .json et .json(.gz))
 #
 # Options clés :
-# --libs "@repo/*,react,org.slf4j:slf4j-api"
+# --libs "@ecaille/*,react,org.slf4j:slf4j-api"
 # --libs-file ./libs.txt
 # --orgs "org1,org2"
 # --repos "org1/repoA,org2/repoB"

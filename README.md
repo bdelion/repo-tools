@@ -1,4 +1,18 @@
-# repoTools for enterprise
+# RepoTools for ENTERPRISE
+
+**Premier exercice sans configuration à remplir :** `npm.cmd run validate:issue-28`.
+Voir [les commandes et les fichiers exacts à contrôler](docs/recette/issue-28.md).
+Cet exercice utilise une bibliothèque témoin fournie dans le dépôt, sans accès GHES.
+
+**Kits pour toutes les issues #28 à #38 :** `npm.cmd run validate:all`.
+Ouvrir ensuite `reports/validation/index.md` ; chaque ligne conduit à son résultat.
+Voir [les configurations, commandes et fichiers à contrôler](docs/recette/README.md).
+Les kits signalent aussi les défauts encore ouverts et les prérequis manquants.
+
+Pour analyser vos bibliothèques JavaScript/TypeScript, consulter le
+[guide des vues UI publique, API publique et dépendances](docs/library-views.md).
+La commande `generate-component-dependency-graph` reste disponible ; `graph:generate`
+est son alias. Le guide décrit les catalogues, le plan par niveaux et l'analyse d'impact.
 
 | Service             |               Master               |              Develop               |
 | :------------------ | :--------------------------------: | :--------------------------------: |
@@ -9,9 +23,9 @@
 
 ## 🚀 Ce que fait ce repo
 
-> **repo-tools** est un ensemble d'outils Node.js pour l’analyse et la visualisation d’artefacts liés à `repo` de la Squad **Communs du Dev** (ex : composants exportés, graphes de dépendances, rapports Markdown/Excel).
+> **ecaille-tools** est un ensemble d'outils Node.js pour l’analyse et la visualisation d’artefacts liés à `Repo` de la Squad **Communs du Dev** (ex : composants exportés, graphes de dépendances, rapports Markdown/Excel).
 
-- **Analyse des composants exportés** par version de livrable de la stack `repo` (diff de contenu + diff AST, rapports Markdown/Excel), voir [analyse-component-versions].
+- **Analyse des composants exportés** par version de livrable de la stack `Repo` (diff de contenu + diff AST, rapports Markdown/Excel), voir [analyse-component-versions].
 - **Génération de graphes de dépendances** (via `madge`, `dagre`, `d3`) pour visualiser modules et imports entre eux, voir [generate-component-dependency-graph].
 - **Inventaire & rapports de dépendances** pour faire un état des lieux de la déclaration des dépendances et générer des rapports associés, voir [scan-ghe].
 
@@ -29,8 +43,8 @@
 Clonez le dépôt et installez les dépendances :
 
 ```bash
-git clone <url-entrepot>/repo-tools.git
-cd repo-tools
+git clone <url-entrepot>/ecaille-tools.git
+cd ecaille-tools
 
 # Sélectionner la bonne version de Node
 nvm use
@@ -57,9 +71,11 @@ Dépendances principales :
 
 Consultez la doc détaillée : [analyse-component-versions].
 
-Pour préparer les correspondances historiques manquantes par dépôt :
-`npm run history:propose -- --config src/config.analyse-component-versions.json`.
+Pour préparer les correspondances historiques manquantes par dépôt : `npm run history:propose -- --config src/config.analyse-component-versions.json`.
 Voir le [mode opératoire de proposition et d’import](docs/component-history-mappings.md).
+
+Pour exporter les rapports Excel en historiques YAML : `npm run history:export`.
+Voir le [mode opératoire](docs/component-history-export.md).
 
 ### Graphes de dépendances
 
@@ -107,14 +123,14 @@ Le séparateur `--` après `graph:required-by-name` est nécessaire : sans lui,
 npm consomme l’option `--all` au lieu de la transmettre au script.
 
 ```bash
-npm run graph:required-by-name -- graphe/repo-react-component-dependency-graph.tgf --all
+npm run graph:required-by-name -- graphe/ecaille-react-component-dependency-graph.tgf --all
 ```
 
 Pour charger une liste depuis un fichier texte UTF-8 (un nom par ligne,
 lignes vides et commentaires commençant par `#` ignorés) :
 
 ```bash
-npm run graph:required-by-name -- graphe/repo-react-component-dependency-graph.tgf --components-file config/components.txt
+npm run graph:required-by-name -- graphe/ecaille-react-component-dependency-graph.tgf --components-file config/components.txt
 ```
 
 Ces trois modes sont exclusifs. Les doublons sont supprimés et les noms inconnus
@@ -143,27 +159,27 @@ reports/
 - complexity score
 - migration effort estimation
 
-## Parcours d'analyse pour `repo-angular`
+## Parcours d'analyse pour `ecaille-angular`
 
-- Synchroniser en local le repository `repo-react` sur la branche `develop`
-- Mettre à jour le fichier `config-ts` pour l'analyse de `repo-react`
+- Synchroniser en local le repository `ecaille-react` sur la branche `develop`
+- Mettre à jour le fichier `config-ts` pour l'analyse de `ecaille-react`
 ```ts
-export const SCAN_PATH = '/workspaces/github/repo/repo-react/src';
-export const ORIGIN_PATH = '/workspaces/github/repo/repo-react/src/';
-export const OUTPUT_TGF_PATH = 'graphe/repo-react-component-dependency-graph.tgf';
-export const OUTPUT_GRAPHE_DIR = 'repo-react';
+export const SCAN_PATH = '/workspaces/github/ecaille/ecaille-react/src';
+export const ORIGIN_PATH = '/workspaces/github/ecaille/ecaille-react/src/';
+export const OUTPUT_TGF_PATH = 'graphe/ecaille-react-component-dependency-graph.tgf';
+export const OUTPUT_GRAPHE_DIR = 'ecaille-react';
 ```
-- Générer le fichier TGF pour `repo-react`
+- Générer le fichier TGF pour `ecaille-react`
 ```sh
 npm run generate-component-dependency-graph
 ```
 - Générer les rapports d'analyse du graphe TGF
 ```sh
-npm run graph:analyze graphe/repo-react-component-dependency-graph.tgf
+npm run graph:analyze graphe/ecaille-react-component-dependency-graph.tgf
 ```
-- Générer le rapport permettant de connaître les composants `repo-react` à implémenter en `repo-angular` pour avoir une version de librairie qui correspond à la liste des composants attendus pour les écrans SMACL
+- Générer le rapport permettant de connaître les composants `ecaille-react` à implémenter en `ecaille-angular` pour avoir une version de librairie qui correspond à la liste des composants attendus pour les écrans SMACL
 ```sh
-npm run graph:required-by-name graphe/repo-react-component-dependency-graph.tgf Accordion ActionsMenuButton AnchorDialog Badge Button ButtonPagination CheckBoxCardGroupFormFragment CheckBoxFormFragment CheckBoxGroupFormFragment ChipsGroupFormFragment CollapsibleDialog ComboBoxFormFragment ConfirmationAnchorDialog ConfirmationDialog DateFormFragment Dialog FileUploadFormFragment Form HeadlinedWizardForm InputPagination LinkButton ListBoxFormFragment Loader LoadingIndicator MoneyFormFragment MultiButton NumberFormFragment NumberedWizardForm RadioCardGroupFormFragment RadioGroupFormFragment SearchFormFragment Stepper StringFormFragment SummaryWizardForm Switch Table Tabs Tag TextFormFragment WizardForm LocalNotificationStack NotificationStack useDataSearch usePagination useServerPagination useValidatedState
+npm run graph:required-by-name graphe/ecaille-react-component-dependency-graph.tgf Accordion ActionsMenuButton AnchorDialog Badge Button ButtonPagination CheckBoxCardGroupFormFragment CheckBoxFormFragment CheckBoxGroupFormFragment ChipsGroupFormFragment CollapsibleDialog ComboBoxFormFragment ConfirmationAnchorDialog ConfirmationDialog DateFormFragment Dialog FileUploadFormFragment Form HeadlinedWizardForm InputPagination LinkButton ListBoxFormFragment Loader LoadingIndicator MoneyFormFragment MultiButton NumberFormFragment NumberedWizardForm RadioCardGroupFormFragment RadioGroupFormFragment SearchFormFragment Stepper StringFormFragment SummaryWizardForm Switch Table Tabs Tag TextFormFragment WizardForm LocalNotificationStack NotificationStack useDataSearch usePagination useServerPagination useValidatedState
 ```
 
 ## ⚙️ Scripts NPM (proposés)
@@ -206,28 +222,25 @@ Nous utilisons [SemVer] pour le versioning. Pour les versions disponibles, voir 
 - Repository : [Nexus]
 
 <!-- liens -->
-[jmb]: https://jenkins.enterprise.io/buildStatus/icon?job=bertrand-delion%2Frepo-tools%2Fmaster&subject=Build%20${displayName} "Jenkins master Build Status Icon"
-[jml]: https://jenkins.enterprise.io/job/DELION%20Bertrand/job/repo-tools/job/master/ "Jenkins master Job"
-[jdb]: https://jenkins.enterprise.io/buildStatus/icon?job=bertrand-delion%2Frepo-tools%2Fdevelop&subject=Build%20${displayName} "Jenkins develop Build Status Icon"
-[jdl]: https://jenkins.enterprise.io/job/DELION%20Bertrand/job/repo-tools/job/develop/ "Jenkins develop Job"
-[smb]: https://sonarqube.enterprise.io/api/project_badges/measure?project=repo-tools&metric=alert_status "Sonar master Quality Gate Status Badge"
-[sml]: https://sonarqube.enterprise.io/dashboard?id=repo-tools "Sonar master Dashboard"
-[sdb]: https://sonarqube.enterprise.io/api/project_badges/measure?project=repo-tools&metric=alert_status&branch=develop "Sonar develop Quality Gate Status Badge"
-[sdl]: https://sonarqube.enterprise.io/dashboard?id=repo-tools&branch=develop "Sonar develop Dashboard"
+[jmb]: https://jenkins.enterprise.io/buildStatus/icon?job=bertrand-delion%2Fecaille-tools%2Fmaster&subject=Build%20${displayName} "Jenkins master Build Status Icon"
+[jml]: https://jenkins.enterprise.io/job/DELION%20Bertrand/job/ecaille-tools/job/master/ "Jenkins master Job"
+[jdb]: https://jenkins.enterprise.io/buildStatus/icon?job=bertrand-delion%2Fecaille-tools%2Fdevelop&subject=Build%20${displayName} "Jenkins develop Build Status Icon"
+[jdl]: https://jenkins.enterprise.io/job/DELION%20Bertrand/job/ecaille-tools/job/develop/ "Jenkins develop Job"
+[smb]: https://sonarqube.enterprise.io/api/project_badges/measure?project=ecaille-tools&metric=alert_status "Sonar master Quality Gate Status Badge"
+[sml]: https://sonarqube.enterprise.io/dashboard?id=ecaille-tools "Sonar master Dashboard"
+[sdb]: https://sonarqube.enterprise.io/api/project_badges/measure?project=ecaille-tools&metric=alert_status&branch=develop "Sonar develop Quality Gate Status Badge"
+[sdl]: https://sonarqube.enterprise.io/dashboard?id=ecaille-tools&branch=develop "Sonar develop Dashboard"
 [Make a README]: https://www.makeareadme.com/#template-1 "README Template et bonnes pratiques"
 
 [analyse-component-versions]: docs/analyse-component-versions.md
-Pour exporter les rapports Excel en historiques YAML : `npm run history:export`.
-Voir le [mode opératoire](docs/component-history-export.md).
-
 [generate-component-dependency-graph]: docs/generate-component-dependency-graph.md
 [scan-ghe]: docs/scan-ghe.md
 
 [CHANGELOG]: CHANGELOG.md "CHANGELOG du projet"
-[issue]: https://github.enterprise.io/bertrand-delion/repo-tools/issues "Liste des issues ouvertes"
-[contributeurs]: https://github.enterprise.io/bertrand-delion/repo-tools/graphs/contributors "Liste des contributeurs au projet"
+[issue]: https://github.enterprise.io/bertrand-delion/ecaille-tools/issues "Liste des issues ouvertes"
+[contributeurs]: https://github.enterprise.io/bertrand-delion/ecaille-tools/graphs/contributors "Liste des contributeurs au projet"
 [SemVer]: https://semver.org/lang/fr/ "Bonnes pratique de la Gestion de Version"
-[les tags de ce projet]: https://github.enterprise.io/bertrand-delion/repo-tools/tags "Liste des tags du projet"
-[Job Jenkins]: https://jenkins.enterprise.io/job/DELION%20Bertrand/job/repo-tools "Job Jenkins du projet"
-[Sonar]: https://sonarqube.enterprise.io/dashboard?id=repo-tools&branch=master "Dashboard Sonar du projet"
-[Nexus]: http://nexus-fabfonc.enterprise.io/#browse/search=keyword%3Drepo-tools "Liste des artifacts existants dans Nexus"
+[les tags de ce projet]: https://github.enterprise.io/bertrand-delion/ecaille-tools/tags "Liste des tags du projet"
+[Job Jenkins]: https://jenkins.enterprise.io/job/DELION%20Bertrand/job/ecaille-tools "Job Jenkins du projet"
+[Sonar]: https://sonarqube.enterprise.io/dashboard?id=ecaille-tools&branch=master "Dashboard Sonar du projet"
+[Nexus]: http://nexus-fabfonc.enterprise.io/#browse/search=keyword%3Decaille-tools "Liste des artifacts existants dans Nexus"

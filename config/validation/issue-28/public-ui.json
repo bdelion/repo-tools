@@ -1,0 +1,7 @@
+{
+  "source": "../../../examples/validation-library/src",
+  "entries": ["index.ts"],
+  "view": "public-ui",
+  "output": "../../../reports/validation/issue-28/public-ui.tgf",
+  "external": false
+}

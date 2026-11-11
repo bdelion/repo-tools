@@ -1,0 +1,4 @@
+{
+  "description": "Le kit lit le tsconfig et Jenkinsfile actuels ; ne les remplace pas.",
+  "externalEvidenceRequired": ["Exécution Jenkins", "Node 22", "Node 24", "Étape Python"]
+}

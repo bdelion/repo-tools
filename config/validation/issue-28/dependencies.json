@@ -1,0 +1,7 @@
+{
+  "source": "../../../examples/validation-library/src",
+  "entries": ["index.ts"],
+  "view": "dependencies",
+  "output": "../../../reports/validation/issue-28/dependencies.tgf",
+  "external": true
+}

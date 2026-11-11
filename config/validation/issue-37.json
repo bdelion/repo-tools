@@ -1,0 +1,5 @@
+{
+  "description": "Aucun retrait automatique. Remplir removals apres inventaire ; une liste vide ne valide pas le nettoyage.",
+  "removals": [],
+  "securityDecision": ""
+}

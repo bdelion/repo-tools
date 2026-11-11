@@ -5,13 +5,13 @@ import { isFilteredNode } from '../scanner/fileFilter';
 
 type SourceNode = { id: string; visibleName: string; icone: string; fileName: string };
 const sourceProject: {
-    buildSourceGraph(root: string, files: string[], excluded: (file: string) => boolean): {
+    buildSourceGraph(root: string, files: string[], excluded: (file: string) => boolean, options: { view: string }): {
         nodes: SourceNode[]; edges: [string, string[]][];
     };
 } = createRequire(__filename)('../sourceProject.cjs');
 
-export function processFiles(files: string[], origin: string): void {
-    const graph = sourceProject.buildSourceGraph(origin, files, isFilteredNode);
+export function processFiles(files: string[], origin: string, view: 'components' | 'detailed' = 'components'): void {
+    const graph = sourceProject.buildSourceGraph(origin, files, isFilteredNode, { view });
     for (const map of [nodes, nodesFiltered, dependencies, dependenciesFiltered]) {
         for (const key of Object.keys(map)) delete map[key];
     }

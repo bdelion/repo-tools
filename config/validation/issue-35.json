@@ -1,0 +1,4 @@
+{
+  "pages": ["README.md", "docs/library-views.md", "docs/generate-component-dependency-graph.md", "docs/analyse-component-versions.md", "docs/scan-ghe.md"],
+  "commands": ["graph:generate", "graph:impact", "graph:required", "analyse-component-versions", "scan-ghe", "validate:issue-32"]
+}

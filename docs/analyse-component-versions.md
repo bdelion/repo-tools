@@ -11,7 +11,7 @@
 ## ✨ Fonctionnalités principales
 
 - Analyse des composants dans les fichiers source
-- Support multi-dépôts Git (`repo-react`, `enterprise-assets`, etc.)
+- Support multi-dépôts Git (`ecaille-react`, `enterprise-assets`, etc.)
 - Scan par tag (tags SemVer stables, hors `-SNAPSHOT`, `-rc.*`, `-hc.*`, etc.)
 - Analyse des branches distantes `develop`, `release/<version>` et `hotfix/*`.
 - Analyse AST via Babel
@@ -50,7 +50,7 @@ npm run analyse-component-versions
 grep -r "export { default as " . | sed -E 's|(.*):export \{ default as ([^ ]+) \} from '\''\.\/([^'\''/]+)'\''|\1\t\2\t\3|'
 ```
 
-Exemple de résultats sur `repo-react-enterprise` :
+Exemple de résultats sur `ecaille-react-enterprise` :
 
 ```bash
 ./src/characters/characterCard/index.js CharacterCard   characterCard
@@ -183,8 +183,8 @@ nécessaire à hauteur des sorties générées.
 Les noms de fichiers normalisent les caractères spéciaux en `_`, par exemple :
 
 ```text
-analyses/repo-react_1.8.0__release_candidate_.json
-analyses/repo-react_1.7.1_to_1.8.0__release_candidate__rapport.md
+analyses/ecaille-react_1.8.0__release_candidate_.json
+analyses/ecaille-react_1.7.1_to_1.8.0__release_candidate__rapport.md
 ```
 
 Les libellés lisibles dans les contenus restent inchangés. Les anciennes

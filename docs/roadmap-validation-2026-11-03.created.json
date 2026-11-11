@@ -1,0 +1,71 @@
+{
+  "repository": "bdelion/repo-tools",
+  "baseCommit": "a62076dca335b164717fcf83b870ae512cd1ac76",
+  "issues": [
+    {
+      "key": "views",
+      "number": 28,
+      "title": "[P1] Vérifier quels composants de la bibliothèque sont utilisables par nos clients",
+      "url": "https://github.com/bdelion/repo-tools/issues/28"
+    },
+    {
+      "key": "branch",
+      "number": 29,
+      "title": "[P1] Scanner la bonne branche lorsque SCAN_BRANCH n'est pas renseigné",
+      "url": "https://github.com/bdelion/repo-tools/issues/29"
+    },
+    {
+      "key": "errors",
+      "number": 30,
+      "title": "[P1] Ne plus annoncer un scan réussi lorsque des dépôts n'ont pas pu être lus",
+      "url": "https://github.com/bdelion/repo-tools/issues/30"
+    },
+    {
+      "key": "scan-tests",
+      "number": 31,
+      "title": "[P1] Vérifier automatiquement les résultats du scanner sur des exemples connus",
+      "url": "https://github.com/bdelion/repo-tools/issues/31"
+    },
+    {
+      "key": "python",
+      "number": 32,
+      "title": "[P1] Pouvoir générer et vérifier le rapport Markdown des dépendances avec Python",
+      "url": "https://github.com/bdelion/repo-tools/issues/32"
+    },
+    {
+      "key": "ci",
+      "number": 33,
+      "title": "[P1] Faire vérifier uniquement le code actif et afficher des validations Node/Python fiables",
+      "url": "https://github.com/bdelion/repo-tools/issues/33"
+    },
+    {
+      "key": "ghes",
+      "number": 34,
+      "title": "[P2] Vérifier les rapports sur quelques vrais dépôts GitHub Enterprise",
+      "url": "https://github.com/bdelion/repo-tools/issues/34"
+    },
+    {
+      "key": "docs",
+      "number": 35,
+      "title": "[P2] Permettre à un nouvel utilisateur de suivre un guide sans connaître le projet",
+      "url": "https://github.com/bdelion/repo-tools/issues/35"
+    },
+    {
+      "key": "isolation",
+      "number": 36,
+      "title": "[P2] Éviter qu'une évolution du graphe change les résultats de l'historique des versions",
+      "url": "https://github.com/bdelion/repo-tools/issues/36"
+    },
+    {
+      "key": "cleanup",
+      "number": 37,
+      "title": "[P3] Retirer uniquement les éléments devenus inutiles sans casser les usages",
+      "url": "https://github.com/bdelion/repo-tools/issues/37"
+    }
+  ],
+  "tracker": {
+    "number": 38,
+    "title": "[Suivi] Consolider les configurations, tests et usages de repo-tools",
+    "url": "https://github.com/bdelion/repo-tools/issues/38"
+  }
+}
