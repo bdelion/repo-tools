@@ -107,10 +107,29 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
     } : {};
     compilerOptions = { ...compilerOptions, ...sourceConvention, allowJs: true, noEmit: true, skipLibCheck: true };
     const fileSet = new Set(files);
-    const sourceCandidate = (file: string): string | undefined => {
-        const candidates = [file, ...['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs'].map(ext => file + ext),
+    const sourceCandidates = (file: string): string[] =>
+        [file, ...['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs'].map(ext => file + ext),
             ...['index.ts', 'index.tsx', 'index.js', 'index.jsx'].map(name => path.join(file, name))];
-        return candidates.find(candidate => fileSet.has(path.resolve(candidate)));
+    const sourceCandidate = (file: string): string | undefined => {
+        return sourceCandidates(file).find(candidate => fileSet.has(path.resolve(candidate)));
+    };
+    const unresolvedImportMessage = (specifier: string, file: string): string => {
+        const directPath = specifier.startsWith('.') ? path.resolve(path.dirname(file), specifier)
+            : path.isAbsolute(specifier) ? specifier
+                : !configPath && sourceIsNamedSrc && (specifier === 'src' || specifier.startsWith('src/'))
+                    ? path.join(source, specifier.slice('src'.length)) : undefined;
+        const tried = directPath ? sourceCandidates(directPath) : [];
+        const paths = Object.keys(compilerOptions.paths ?? {});
+        return [
+            `Import local non résolu : ${specifier} depuis ${file}`,
+            `Dossier analysé : ${source}`,
+            `Fichier de configuration : ${configPath ?? 'aucun'}`,
+            `Convention src/... automatique : ${!configPath && sourceIsNamedSrc ? 'active' : 'inactive'}`,
+            `Fichiers source lus : ${files.length}`,
+            ...(paths.length ? [`Alias connus : ${paths.join(', ')}`] : []),
+            ...(tried.length ? ['Chemins essayés :', ...tried.map(candidate =>
+                `- ${candidate} (${fs.existsSync(candidate) ? 'trouvé mais hors fichiers analysés' : 'absent'})`)] : []),
+        ].join('\n');
     };
     let entries = input.entries?.map(entry => sourceCandidate(path.resolve(source, entry)) ?? '');
     if (entries?.some(entry => !entry)) throw new Error('Point d’entrée introuvable dans --source. Utiliser --entry avec un fichier source existant.');
@@ -241,7 +260,7 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
             }
             const isLocal = specifier.startsWith('.') || path.isAbsolute(specifier) ||
                 Object.keys(compilerOptions.paths ?? {}).some(pattern => pattern !== '*' && new RegExp('^' + pattern.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$').test(specifier));
-            if (!resolution && isLocal) throw new Error(`Import local non résolu : ${specifier} depuis ${file.fileName}`);
+            if (!resolution && isLocal) throw new Error(unresolvedImportMessage(specifier, file.fileName));
             const local = resolution && fileSet.has(path.resolve(resolution.resolvedFileName));
             if (resolution && !resolution.isExternalLibraryImport && !inside(resolution.resolvedFileName)) {
                 diagnostics.push(`Source hors périmètre ignorée : ${specifier} depuis ${relative(file.fileName)}`);

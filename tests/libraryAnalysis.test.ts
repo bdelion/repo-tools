@@ -114,7 +114,13 @@ test('les imports locaux cassés échouent et la classification UI peut être co
     assert.equal(ui.nodes[0].name, 'Wrapped');
     assert.throws(() => analyzeLibrary({ source: path.join(root, 'src'), view: 'public-ui', uiInclude: ['Props'] }), /type/);
     write('src/broken.ts', "import { missing } from './absent'; export const broken = missing;");
-    assert.throws(() => analyzeLibrary({ source: path.join(root, 'src'), view: 'dependencies' }), /Import local non résolu/);
+    assert.throws(() => analyzeLibrary({ source: path.join(root, 'src'), view: 'dependencies' }), error => {
+        assert.match((error as Error).message, /Import local non résolu/);
+        assert.match((error as Error).message, /Dossier analysé/);
+        assert.match((error as Error).message, /Fichier de configuration/);
+        assert.match((error as Error).message, /Chemins essayés/);
+        return true;
+    });
 }));
 
 test('la convention src est comprise sans fichier tsconfig ou jsconfig', () => {
