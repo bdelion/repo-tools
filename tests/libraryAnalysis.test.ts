@@ -195,8 +195,35 @@ test('les namespaces, ressources publiques et déclarations locales sont invento
     assert.ok(api.nodes.some(node => node.kind === 'external' && node.publicNames.includes('useState')));
     assert.ok(api.nodes.some(node => node.kind === 'type' && node.publicNames.includes('LocalType')));
     const ui = analyzeLibrary({ source: path.join(root, 'src'), view: 'public-ui' });
-    assert.deepEqual(ui.nodes.map(node => node.name), ['Check', 'Box']);
+    assert.deepEqual(ui.nodes.map(node => node.name), ['Check', 'Logo', 'Box']);
+    assert.equal(ui.nodes.find(node => node.name === 'Logo')?.kind, 'asset');
     assert.ok(selectLibrary(ui, ['Widgets.Box'], 'required').components.some(node => node.name === 'helper'));
+}));
+
+test('les SVG réexportés par un barillet sont résolus comme ressources', () => fixture((root, write) => {
+    write('src/svg/femme.component.svg', '<svg/>');
+    write('src/svg/index.js', "export { default as Femme } from './femme.component.svg';");
+    write('src/Avatar.jsx', "import { Femme } from './svg'; export const Avatar = () => <Femme/>;");
+    write('src/index.js', "export { Avatar } from './Avatar'; export { Femme } from './svg';");
+    write('src/assets.d.ts', "declare module '*.svg' { const component: (props: any) => any; export default component; }");
+
+    const source = path.join(root, 'src');
+    const ui = analyzeLibrary({ source, view: 'public-ui' });
+    assert.deepEqual(ui.nodes.map(node => node.name), ['Avatar', 'Femme']);
+    const uiFemme = ui.nodes.find(node => node.kind === 'asset')!;
+    const uiAvatar = ui.nodes.find(node => node.name === 'Avatar')!;
+    assert.equal(uiFemme.path, 'svg/femme.component.svg');
+    assert.ok(ui.edges.some(edge => edge.source === uiAvatar.id && edge.target === uiFemme.id));
+
+    const api = analyzeLibrary({ source, view: 'public-api' });
+    const femme = api.nodes.find(node => node.kind === 'asset' && node.publicNames.includes('Femme'));
+    assert.ok(femme);
+    assert.equal(femme.path, 'svg/femme.component.svg');
+
+    const dependencies = analyzeLibrary({ source, view: 'dependencies' });
+    const avatar = dependencies.nodes.find(node => node.name === 'Avatar')!;
+    const svg = dependencies.analysis.nodes.find(node => node.id === femme.id)!;
+    assert.ok(dependencies.edges.some(edge => edge.source === avatar.id && edge.target === svg.id));
 }));
 
 test('la CLI publie les vues et leurs rapports puis permet impact et prérequis sur une bibliothèque JS', () => fixture((root, write) => {

@@ -43,6 +43,7 @@ export interface LibraryResult {
 const slash = (value: string) => value.replace(/\\/g, '/');
 const packageName = (value: string) => value.startsWith('@') ? value.split('/').slice(0, 2).join('/') : value.split('/')[0];
 const isResource = (value: string) => /\.(css|scss|sass|less|svg|png|jpe?g|gif|ico|json|woff2?)(?:\?.*)?$/i.test(value);
+const isSvgResource = (value: string) => /\.svg(?:\?.*)?$/i.test(value);
 const scriptExtension = (file: string): ts.Extension => {
     const extensions: Record<string, ts.Extension> = {
         '.ts': ts.Extension.Ts, '.tsx': ts.Extension.Tsx,
@@ -183,6 +184,70 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
     const addEdge = (from: string, to: string, kind: 'runtime' | 'type' = 'runtime') => {
         if (from !== to) edgeMap.set(`${from}\0${to}\0${kind}`, { source: from, target: to, kind });
     };
+    const assetNode = (asset: string, name: string): string => {
+        const id = `asset:${encodeURIComponent(relative(asset))}`;
+        if (!nodes.has(id)) nodes.set(id, { id, name, path: relative(asset), kind: 'asset', publicNames: [] });
+        return id;
+    };
+    const resolveResourceExport = (file: string, name: string, visited = new Set<string>()): string | undefined => {
+        file = path.resolve(file);
+        const key = `${file}#${name}`;
+        if (visited.has(key)) return undefined;
+        const next = new Set(visited).add(key);
+        const sourceFile = program.getSourceFile(file);
+        if (!sourceFile) return undefined;
+        for (const statement of sourceFile.statements) {
+            if (!ts.isExportDeclaration(statement) || !statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+            let imported: string | undefined;
+            if (statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+                const specifier = statement.exportClause.elements.find(element => element.name.text === name);
+                if (specifier) imported = specifier.propertyName?.text ?? specifier.name.text;
+            } else if (!statement.exportClause && name !== 'default') imported = name;
+            if (imported === undefined) continue;
+            const specifier = statement.moduleSpecifier.text;
+            if (isSvgResource(specifier)) {
+                const asset = path.resolve(path.dirname(file), specifier.split('?')[0]);
+                if (inside(asset) && fs.existsSync(asset)) return asset;
+                continue;
+            }
+            const target = ts.resolveModuleName(specifier, file, compilerOptions, ts.sys).resolvedModule?.resolvedFileName;
+            if (target && inside(target)) {
+                const asset = resolveResourceExport(target, imported, next);
+                if (asset) return asset;
+            }
+        }
+        for (const statement of sourceFile.statements) {
+            if (!ts.isExportDeclaration(statement) || statement.moduleSpecifier || !statement.exportClause ||
+                !ts.isNamedExports(statement.exportClause)) continue;
+            const exported = statement.exportClause.elements.find(element => element.name.text === name);
+            if (!exported) continue;
+            const local = exported.propertyName?.text ?? exported.name.text;
+            for (const importedStatement of sourceFile.statements) {
+                if (!ts.isImportDeclaration(importedStatement) || !ts.isStringLiteral(importedStatement.moduleSpecifier)) continue;
+                const clause = importedStatement.importClause;
+                if (!clause) continue;
+                let importedName: string | undefined;
+                if (clause.name?.text === local) importedName = 'default';
+                if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+                    const binding = clause.namedBindings.elements.find(element => element.name.text === local);
+                    if (binding) importedName = binding.propertyName?.text ?? binding.name.text;
+                }
+                if (importedName === undefined) continue;
+                const specifier = importedStatement.moduleSpecifier.text;
+                if (isSvgResource(specifier)) {
+                    const asset = path.resolve(path.dirname(file), specifier.split('?')[0]);
+                    if (inside(asset) && fs.existsSync(asset)) return asset;
+                    continue;
+                }
+                const target = ts.resolveModuleName(specifier, file, compilerOptions, ts.sys).resolvedModule?.resolvedFileName;
+                if (target && inside(target)) {
+                    const asset = resolveResourceExport(target, importedName, next);
+                    if (asset) return asset;
+                }
+            }
+        }
+        return undefined;
+    };
     const hasUi = (node: ts.Node): boolean => {
         let found = false;
         const walk = (child: ts.Node) => {
@@ -249,7 +314,9 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
         for (const statement of file.statements) {
             if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
             const specifier = statement.moduleSpecifier.text;
-            if (isResource(specifier)) continue;
+            const directSvg = isSvgResource(specifier)
+                ? path.resolve(path.dirname(file.fileName), specifier.split('?')[0]) : undefined;
+            if (isResource(specifier) && !directSvg) continue;
             let resolution = ts.resolveModuleName(specifier, file.fileName, compilerOptions, ts.sys).resolvedModule;
             // La rÃ©solution TypeScript peut Ã©chouer sur certains projets JavaScript
             // sans configuration. Pour les conventions `src/...` et `/src/...`, chercher aussi dans
@@ -265,7 +332,7 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
             }
             const isLocal = specifier.startsWith('.') || path.isAbsolute(specifier) ||
                 Object.keys(compilerOptions.paths ?? {}).some(pattern => pattern !== '*' && new RegExp('^' + pattern.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$').test(specifier));
-            if (!resolution && isLocal) throw new Error(unresolvedImportMessage(specifier, file.fileName));
+            if (!resolution && isLocal && !directSvg) throw new Error(unresolvedImportMessage(specifier, file.fileName));
             const local = resolution && fileSet.has(path.resolve(resolution.resolvedFileName));
             if (resolution && !resolution.isExternalLibraryImport && !inside(resolution.resolvedFileName)) {
                 diagnostics.push(`Source hors périmètre ignorée : ${specifier} depuis ${relative(file.fileName)}`);
@@ -282,7 +349,13 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
             for (const binding of bindings) {
                 const symbol = checker.getSymbolAtLocation(binding.name);
                 if (!symbol) continue;
-                const target = register(symbol);
+                const importedName = clause?.name === binding.name ? 'default' :
+                    clause?.namedBindings && ts.isNamedImports(clause.namedBindings)
+                        ? clause.namedBindings.elements.find(element => element.name === binding.name)?.propertyName?.text ?? binding.name.text
+                        : undefined;
+                const asset = directSvg && inside(directSvg) && fs.existsSync(directSvg) ? directSvg
+                    : local && importedName ? resolveResourceExport(resolution!.resolvedFileName, importedName) : undefined;
+                const target = asset ? assetNode(asset, binding.name.text) : register(symbol);
                 if (local && !target && !ts.isNamespaceImport(binding.name.parent)) throw new Error(`Export non résolu : ${binding.name.text} depuis ${specifier}`);
                 imports.set(symbol, { target, package: pkg, typeOnly: binding.typeOnly });
             }
@@ -326,7 +399,8 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
         while (pendingExports.length) {
             const item = pendingExports.shift()!;
             const exported = item.symbol;
-            let id = register(exported);
+            const exportedAsset = resolveResourceExport(entry, item.name);
+            let id = exportedAsset ? assetNode(exportedAsset, item.name) : register(exported);
             if (!id) {
                 const declaration = exported.declarations?.[0];
                 const exportDeclaration = declaration && ts.isExportSpecifier(declaration) && ts.isExportDeclaration(declaration.parent.parent) ? declaration.parent.parent : undefined;
@@ -336,10 +410,9 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
                 const pkg = specifier && !specifier.startsWith('.') && !path.isAbsolute(specifier) ? packageName(specifier)
                     : externalDeclaration?.includes('node_modules') && modulePackage ? packageName(modulePackage) : undefined;
                 if (specifier && isResource(specifier)) {
-                    const asset = path.resolve(path.dirname(declaration!.getSourceFile().fileName), specifier);
-                    if (!fs.existsSync(asset)) throw new Error(`Ressource publique absente : ${asset}`);
-                    id = `asset:${encodeURIComponent(relative(asset))}`;
-                    if (!nodes.has(id)) nodes.set(id, { id, name: exported.getName(), path: relative(asset), kind: 'asset', publicNames: [] });
+                    const directAsset = path.resolve(path.dirname(declaration!.getSourceFile().fileName), specifier);
+                    if (!fs.existsSync(directAsset)) throw new Error(`Ressource publique absente : ${directAsset}`);
+                    id = assetNode(directAsset, exported.getName());
                 } else if (pkg) {
                     id = `package:${encodeURIComponent(pkg)}#${encodeURIComponent(exported.getName())}`;
                     if (!nodes.has(id)) nodes.set(id, { id, name: exported.getName(), path: '', kind: 'external', package: pkg, publicNames: [] });
@@ -386,7 +459,8 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
     const allNodes = [...nodes.values()].sort((a, b) => compareIds(a.id, b.id));
     const allEdges = [...edgeMap.values()].sort(compareEdges);
     const selected = new Set(allNodes.filter(node => input.view === 'dependencies' ||
-        exports.some(exp => exp.id === node.id && (input.view === 'public-api' || (!exp.typeOnly && node.kind === 'ui')))).map(node => node.id));
+        exports.some(exp => exp.id === node.id && (input.view === 'public-api' ||
+            (!exp.typeOnly && (node.kind === 'ui' || node.kind === 'asset'))))).map(node => node.id));
     const adjacent = new Map<string, LibraryEdge[]>();
     for (const edge of allEdges) {
         if (!adjacent.has(edge.source)) adjacent.set(edge.source, []);

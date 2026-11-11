@@ -138,7 +138,8 @@ complète. Aucun chiffrage en jours n'est introduit par cette évolution.
 - Les relations sont des références statiques entre déclarations ; les imports
   inutilisés ne créent pas de dépendance. Le JSX peut introduire implicitement
   React ou `jsxImportSource` lorsque les packages externes sont inclus.
-- Un SVG brut réexporté est une ressource de l'API, pas automatiquement un composant UI.
+- Un SVG brut réexporté, y compris via un barillet, apparaît comme ressource
+  dans `public-ui`, `public-api` et `dependencies` ; il n'est pas classé comme UI.
 - Les imports ESM sont pris en charge. Les imports dynamiques, `require` calculés
   et comportements runtime ne sont pas garantis. Les fichiers CommonJS purs ne
   constituent pas un inventaire exhaustif de leurs exports publics.
