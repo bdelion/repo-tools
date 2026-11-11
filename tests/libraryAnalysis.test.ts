@@ -127,9 +127,10 @@ test('la convention src est comprise sans fichier tsconfig ou jsconfig', () => {
     };
     try {
         write('src/components/Button.jsx', 'export const Button = () => <button/>;');
-        write('src/card-template/CardTemplate.jsx', "import { Button } from 'src/components/Button'; export const CardTemplate = () => <Button/>;");
-        write('src/components/index.js', "export { CardTemplate } from '../card-template/CardTemplate';");
-        const result = analyzeLibrary({ source, entries: ['components/index.js'], view: 'public-ui' });
+        write('src/components/index.js', "export { Button } from './Button';");
+        write('src/card-template/CardTemplate.jsx', "import { Button } from 'src/components'; export const CardTemplate = () => <Button/>;");
+        write('src/index.js', "export { CardTemplate } from './card-template/CardTemplate';");
+        const result = analyzeLibrary({ source, entries: ['index.js'], view: 'public-ui' });
         assert.deepEqual(result.nodes.map(node => node.name), ['CardTemplate']);
         assert.ok(result.analysis.nodes.some(node => node.name === 'Button'));
         assert.ok(result.analysis.edges.some(edge => {

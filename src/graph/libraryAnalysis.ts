@@ -43,6 +43,15 @@ export interface LibraryResult {
 const slash = (value: string) => value.replace(/\\/g, '/');
 const packageName = (value: string) => value.startsWith('@') ? value.split('/').slice(0, 2).join('/') : value.split('/')[0];
 const isResource = (value: string) => /\.(css|scss|sass|less|svg|png|jpe?g|gif|ico|json|woff2?)(?:\?.*)?$/i.test(value);
+const scriptExtension = (file: string): ts.Extension => {
+    const extensions: Record<string, ts.Extension> = {
+        '.ts': ts.Extension.Ts, '.tsx': ts.Extension.Tsx,
+        '.js': ts.Extension.Js, '.jsx': ts.Extension.Jsx,
+        '.mts': ts.Extension.Mts, '.cts': ts.Extension.Cts,
+        '.mjs': ts.Extension.Mjs, '.cjs': ts.Extension.Cjs,
+    };
+    return extensions[path.extname(file).toLowerCase()] ?? ts.Extension.Js;
+};
 
 export function analyzeLibrary(input: LibraryOptions): LibraryResult {
     const source = path.resolve(input.source);
@@ -218,7 +227,18 @@ export function analyzeLibrary(input: LibraryOptions): LibraryResult {
             if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
             const specifier = statement.moduleSpecifier.text;
             if (isResource(specifier)) continue;
-            const resolution = ts.resolveModuleName(specifier, file.fileName, compilerOptions, ts.sys).resolvedModule;
+            let resolution = ts.resolveModuleName(specifier, file.fileName, compilerOptions, ts.sys).resolvedModule;
+            // La rÃ©solution TypeScript peut Ã©chouer sur certains projets JavaScript
+            // sans configuration. Pour la convention `src/...`, chercher aussi dans
+            // les fichiers qui viennent d'Ãªtre scannÃ©s, y compris `index.*`.
+            if (!resolution && !configPath && sourceIsNamedSrc && (specifier === 'src' || specifier.startsWith('src/'))) {
+                const candidate = sourceCandidate(path.join(source, specifier.slice('src'.length)));
+                if (candidate) resolution = {
+                    resolvedFileName: candidate,
+                    extension: scriptExtension(candidate),
+                    isExternalLibraryImport: false,
+                };
+            }
             const isLocal = specifier.startsWith('.') || path.isAbsolute(specifier) ||
                 Object.keys(compilerOptions.paths ?? {}).some(pattern => pattern !== '*' && new RegExp('^' + pattern.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$').test(specifier));
             if (!resolution && isLocal) throw new Error(`Import local non résolu : ${specifier} depuis ${file.fileName}`);
